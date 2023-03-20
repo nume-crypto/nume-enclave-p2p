@@ -1,0 +1,29 @@
+#IDE generated
+.vscode/
+.idea/
+.atom/
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/*
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+#Build file
+merkle_tree_optimization
+
+.env
+a.json
+*.pem
+data/
+vendor/
+
+.DS_store
