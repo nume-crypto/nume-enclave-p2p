@@ -4,7 +4,9 @@ go 1.20
 
 require (
 	github.com/aws/aws-sdk-go v1.44.225
+	github.com/consensys/gnark-crypto v0.8.0
 	github.com/spf13/viper v1.15.0
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
 require (
