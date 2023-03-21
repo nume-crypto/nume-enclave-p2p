@@ -2,11 +2,15 @@ module github.com/nume-crypto/nume-enclave-p2p
 
 go 1.20
 
-require github.com/spf13/viper v1.15.0
+require (
+	github.com/aws/aws-sdk-go v1.44.225
+	github.com/spf13/viper v1.15.0
+)
 
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
