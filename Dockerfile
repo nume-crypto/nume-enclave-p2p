@@ -11,6 +11,7 @@ RUN go mod download
 COPY . .
 
 RUN chmod a+x bn256_aggregatesign
+RUN chmod a+x bn256_verify
 ENV GOPATH=/go
 ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 ENV GO111MODULE=on

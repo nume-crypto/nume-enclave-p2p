@@ -102,3 +102,23 @@ func TestSignMessage(t *testing.T) {
 		return
 	}
 }
+
+func TestVerifyDigitalSignature(t *testing.T) {
+	message := "10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d"
+	aggregated_public_key_components := []string{
+		"0abbdf1e100b1020b1178060decc6f5b257f0a39ea6f7baf506f8039b38f4caf",
+		"0af72d12a44c88aeff2d19488c258e3f1a5006f895362a587bb3a2156208df34",
+		"098b5d055ad316e2870258ab279bc467b5b93c114b6aabd472c571079c7ac3af",
+		"08cc1c223fc7044fb37e527835fa1c7cae3acff0b19fa97d3170dad41673524d"}
+	sig := "020da5e5a5fb0ca69acbdb01554ab258199f17588e9d4aec7d79f353cdad987280"
+	verified, err := VerifyDigitalSignature(message, sig, aggregated_public_key_components)
+	if err != nil {
+		t.Errorf("Error verifying signature " + err.Error())
+		return
+	}
+	if !verified {
+		t.Errorf("Expected true, got false")
+		return
+	}
+
+}
