@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -13,16 +14,28 @@ type Transaction struct {
 	Nonce      uint64
 	CurrencyId uint
 	Type       string
+	Signature  string
+}
+type UserKey struct {
+	G1 []string
+	G2 []string
 }
 
 func CheckNonce(last_nonce, current_nonce uint64) bool {
 	return last_nonce < current_nonce
 }
 
-func GetDeltaBalances(transactions []Transaction) (map[string]map[uint]string, error) {
+func GetDeltaBalances(transactions []Transaction, user_keys map[string]UserKey) (map[string]map[uint]string, error) {
 	user_nonce_tracker := make(map[string]uint64)
 	delta_balances := make(map[string]map[uint]string)
 	for i, transaction := range transactions {
+		ds_message, ok := DigitalSignatureMessageHash(transaction.From, transaction.To, transaction.Amount, strconv.FormatUint(transaction.Nonce, 10), strconv.FormatUint(uint64(transaction.CurrencyId), 10))
+		if !ok {
+			return delta_balances, fmt.Errorf("error generating digital signature message hash")
+		}
+		if transaction.Type != "deposit" && !VerifyDigitalSignature(hex.EncodeToString(ds_message), transaction.Signature, user_keys[transaction.From].G2) {
+			return delta_balances, fmt.Errorf("digital signature verification failed for transaction number %v", i+1)
+		}
 		if !CheckNonce(user_nonce_tracker[transaction.From], transaction.Nonce) && transaction.Type != "deposit" {
 			return delta_balances, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
@@ -116,8 +129,8 @@ func GetDeltaBalances(transactions []Transaction) (map[string]map[uint]string, e
 	return delta_balances, nil
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []Transaction) (map[string]map[string]string, error) {
-	delta_balances, err := GetDeltaBalances(transactions)
+func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, user_keys map[string]UserKey) (map[string]map[string]string, error) {
+	delta_balances, err := GetDeltaBalances(transactions, user_keys)
 	if err != nil {
 		return state_balances, err
 	}

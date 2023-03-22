@@ -93,7 +93,20 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	new_balances, err := TransitionState(prev_balances, transactions)
+	user_keys := make(map[string]UserKey)
+	user_keys_file, err := os.Open("test_data/user_keys.json")
+	if err != nil {
+		t.Errorf("Error opening test_data/user_keys.json")
+		return
+	}
+	err = json.NewDecoder(user_keys_file).Decode(&user_keys)
+	if err != nil {
+		t.Errorf("Error decoding json from test_data/user_keys.json")
+		return
+	}
+	defer new_balances_file.Close()
+
+	new_balances, err := TransitionState(prev_balances, transactions, user_keys)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return

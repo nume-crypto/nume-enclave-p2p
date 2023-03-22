@@ -90,7 +90,7 @@ func SignMessage(message string, merchant_key_id_map map[uint]string, merchant_c
 
 }
 
-func VerifyDigitalSignature(message string, signature string, aggregated_public_key_components []string) (bool, error) {
+func VerifyDigitalSignature(message string, signature string, aggregated_public_key_components []string) bool {
 	app := "./bn256_verify"
 	var args []string
 	aggregated_public_key_components_joined := strings.Join(aggregated_public_key_components, "")
@@ -99,10 +99,9 @@ func VerifyDigitalSignature(message string, signature string, aggregated_public_
 	args = append(args, signature)
 	cmd := exec.Command(app, args...)
 	stdout, err := cmd.Output()
-
 	if err != nil {
-		return false, err
+		return false
 	}
 	result := string(stdout)
-	return strings.Contains(result, "Successful verification"), nil
+	return strings.Contains(result, "Successful verification")
 }
