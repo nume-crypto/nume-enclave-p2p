@@ -9,3 +9,9 @@ go test . -coverprofile coverage_temp.out -v
 cat coverage_temp.out | grep -v "mimc.go\|merkle.go\|utils.go\|main.go" > coverage.out  
 go tool cover -html=coverage.out
 ```
+
+### run
+
+```sh
+go run !(*_test).go
+```

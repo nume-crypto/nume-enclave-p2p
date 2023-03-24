@@ -3,33 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"reflect"
 	"testing"
 )
-
-func nestedMapsEqual(m1, m2 map[string]map[string]string) bool {
-	if len(m1) != len(m2) {
-		return false
-	}
-	for k, v1 := range m1 {
-		if v2, ok := m2[k]; !ok || !mapsEqual(v1, v2) {
-			return false
-		}
-	}
-	return reflect.DeepEqual(m1, m2)
-}
-
-func mapsEqual(m1, m2 map[string]string) bool {
-	if len(m1) != len(m2) {
-		return false
-	}
-	for k, v1 := range m1 {
-		if v2, ok := m2[k]; !ok || v1 != v2 {
-			return false
-		}
-	}
-	return reflect.DeepEqual(m1, m2)
-}
 
 type CheckNonceData struct {
 	last_nonce    uint64
@@ -54,7 +29,7 @@ func TestCheckNonce(t *testing.T) {
 }
 
 func TestTransitionState(t *testing.T) {
-	prev_balances := make(map[string]map[string]string)
+	prev_balances := make(map[string]map[uint]string)
 	prev_balances_file, err := os.Open("test_data/prev_balances.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/prev_balances.json")
@@ -80,7 +55,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer transactions_file.Close()
 
-	new_balances_desired := make(map[string]map[string]string)
+	new_balances_desired := make(map[string]map[uint]string)
 	new_balances_file, err := os.Open("test_data/new_balances.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/new_balances.json")
@@ -93,7 +68,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	user_keys := make(map[string]UserKey)
+	user_keys := make(map[string]UserKeys)
 	user_keys_file, err := os.Open("test_data/user_keys.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/user_keys.json")
@@ -112,9 +87,9 @@ func TestTransitionState(t *testing.T) {
 		return
 	}
 
-	result := nestedMapsEqual(new_balances, new_balances_desired)
+	result := NestedMapsEqual(new_balances, new_balances_desired)
 	if !result {
-		t.Errorf("nestedMapsEqual(new_balances, new_balances_desired) = %t, want %t", result, true)
+		t.Errorf("NestedMapsEqual(new_balances, new_balances_desired) = %t, want %t", result, true)
 		return
 	}
 

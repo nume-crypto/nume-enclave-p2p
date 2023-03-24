@@ -11,19 +11,20 @@ import (
 func TestDecrypt(t *testing.T) {
 	sess := session.Must(session.NewSession())
 	kms_client := kms.New(sess, aws.NewConfig().WithRegion("us-east-1"))
-	data := make(map[uint]string)
-	data[1] = "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv"
-	data[2] = "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv"
-	data[3] = "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPp"
-	cmk_ids := make([]string, 0)
-	cmk_ids = append(cmk_ids, "c53fe209-f0a7-42d2-baec-9d8f286f5ce1")
-	cmk_ids = append(cmk_ids, "c53fe209-f0a7-42d2-baec-9d8f286f5ce1")
-	cmk_ids = append(cmk_ids, "c53fe209-f0a7-42d2-baec-9d8f286f5ce1")
-	merchant_status := make(map[uint]bool)
-	merchant_status[1] = true
-	merchant_status[2] = false
-	merchant_status[3] = true
-	keys, failed_to_decrypt, successfully_decrypted, err := DecryptKeys(data, cmk_ids, kms_client, merchant_status)
+	user_keys := make(map[string]UserKeys)
+	user_keys["1"] = UserKeys{
+		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
+		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
+	}
+	user_keys["2"] = UserKeys{
+		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
+		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
+	}
+	user_keys["3"] = UserKeys{
+		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPp",
+		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
+	}
+	keys, _, _, err := DecryptKeys(user_keys, kms_client)
 	if err != nil {
 		t.Errorf("Error decrypting keys " + err.Error())
 		return
@@ -34,14 +35,6 @@ func TestDecrypt(t *testing.T) {
 	}
 	if keys[0] != "1234" {
 		t.Errorf("Expected 1234, got %s", keys[0])
-		return
-	}
-	if len(failed_to_decrypt) != 1 {
-		t.Errorf("Expected 1 failed_to_decrypt, got %d", len(failed_to_decrypt))
-		return
-	}
-	if len(successfully_decrypted) != 1 {
-		t.Errorf("Expected 1 successfully_decrypted, got %d", len(successfully_decrypted))
 		return
 	}
 }
@@ -82,13 +75,12 @@ func TestAggregateSignature(t *testing.T) {
 }
 
 func TestSignMessage(t *testing.T) {
-	data := make(map[uint]string)
-	data[1] = "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAGN9n0CV+9w2tjYAqrVQWhcAAAAojCBnwYJKoZIhvcNAQcGoIGRMIGOAgEAMIGIBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDItcDL4lPiDkr7spewIBEIBbRb6Pltakos+qO7Ocpv0aiXT4GqF/8kMqm4pTFXMVO698rjL1u7PrudG09yiXvTVR3n/4hQrQf+LoGBi4CXTlc80z/f3OXTAB5tJCwNhOLAPgKZmo5X9MAT759A=="
-	cmk_ids := make(map[uint]string)
-	cmk_ids[1] = "c53fe209-f0a7-42d2-baec-9d8f286f5ce1"
-	merchant_status := make(map[uint]bool)
-	merchant_status[1] = true
-	signature, _, _, _, err := SignMessage("10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d", data, cmk_ids, merchant_status)
+	user_keys := make(map[string]UserKeys)
+	user_keys["162ef608bf92f47846fbf53481f1b0504e3bd1f1678376b20139bd94cf0003eb"] = UserKeys{
+		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAGN9n0CV+9w2tjYAqrVQWhcAAAAojCBnwYJKoZIhvcNAQcGoIGRMIGOAgEAMIGIBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDItcDL4lPiDkr7spewIBEIBbRb6Pltakos+qO7Ocpv0aiXT4GqF/8kMqm4pTFXMVO698rjL1u7PrudG09yiXvTVR3n/4hQrQf+LoGBi4CXTlc80z/f3OXTAB5tJCwNhOLAPgKZmo5X9MAT759A==",
+		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
+	}
+	signature, _, _, _, err := SignMessage("10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d", user_keys)
 	if err != nil {
 		t.Errorf("Error signing message" + err.Error())
 		return
