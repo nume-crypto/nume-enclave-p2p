@@ -15,15 +15,13 @@ func GetDeltaBalances(transactions []Transaction, user_keys map[string]UserKeys)
 	user_nonce_tracker := make(map[string]uint64)
 	delta_balances := make(map[string]map[uint]string)
 	for i, transaction := range transactions {
-
 		if transaction.Type != "deposit" {
 			ds_message, ok := DigitalSignatureMessageHash(transaction.From, transaction.To, strconv.FormatUint(uint64(transaction.CurrencyTokenOrder), 10), transaction.Amount, strconv.FormatUint(uint64(transaction.Nonce), 10))
 			if !ok {
-				fmt.Println(transaction.From, transaction.To, transaction.Amount, strconv.FormatUint(uint64(transaction.Nonce), 10), strconv.FormatUint(uint64(transaction.CurrencyTokenOrder), 10))
 				return delta_balances, fmt.Errorf("error generating digital signature message hash")
 			}
 			if !VerifyDigitalSignature(hex.EncodeToString(ds_message), transaction.Signature, user_keys[transaction.From].BlsG2PublicKey) {
-				return delta_balances, fmt.Errorf("digital signature verification failed for transaction number %v", i+1)
+				return delta_balances, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, hex.EncodeToString(ds_message), user_keys[transaction.From].HashedPublicKey)
 			}
 		}
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" {
@@ -151,6 +149,5 @@ func TransitionState(state_balances map[string]map[uint]string, transactions []T
 			}
 		}
 	}
-
 	return state_balances, nil
 }

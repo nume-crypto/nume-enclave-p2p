@@ -3,111 +3,111 @@
         "from": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "to": "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
         "amount": "3",
-        "currencyId": 0,
+        "CurrencyTokenOrder": 0,
         "nonce": 1,
         "type": "transfer",
-        "signature": "021332d7caf8d62076347dd04a42f63c4e228bd26c78acafce3588ffc778a218ae"
+        "signature": "032f9782272e451cd51767dd02410a3f487832e21bc50352f4613a3caab3025cb3"
     },
     {
         "from": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "to": "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
         "amount": "2",
-        "currencyId": 3,
+        "CurrencyTokenOrder": 3,
         "nonce": 2,
         "type": "transfer",
-        "signature": "022658ec3a1d59d5a4fcd88156c0c279b4339a99b0318520f999f2ecb12839bafc"
+        "signature": "03030d4971139372b9b636e88c85a2f450973f252c9d82c974ad2b7a7ddb9325e0"
     },
     {
         "from": "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
         "to": "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a",
         "amount": "1",
-        "currencyId": 2,
+        "CurrencyTokenOrder": 2,
         "nonce": 2,
         "type": "transfer",
-        "signature": "021958255917c508ea41138986e58b89fd77b7a46b728f42644a11650887b35148"
+        "signature": "0200f7912c7eefad2756202c09df868cd2c9ed8869ad6230572ec32d52b0550154"
     },
     {
         "from": "095f7777e8c23209342ed0647791ab4e99bbe33a8f9114a338f0e7117fd9ff26",
         "to": "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a",
         "amount": "6",
-        "currencyId": 5,
+        "CurrencyTokenOrder": 5,
         "nonce": 1,
         "type": "transfer",
-        "signature": "0209745a1bc3d69d4347f448fa8ae543b016b46abe5d1f295dfb5366043ec39088"
+        "signature": "0214351a0d11d3704ca224fca80b2df1c97d1ad04c87498cf730604e6fb1365218"
     },
     {
         "from": "095f7777e8c23209342ed0647791ab4e99bbe33a8f9114a338f0e7117fd9ff26",
         "to": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "amount": "4",
-        "currencyId": 4,
+        "CurrencyTokenOrder": 4,
         "nonce": 2,
         "type": "transfer",
-        "signature": "020762021844bb4dbed1242987432b89b2e48501146d2ce321a08e4a04446e6113"
+        "signature": "0219ed96b3bb87ce2f2d48c14f24bee79ef0534424d21236af658a73c6672fdc54"
     },
     {
         "from": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "to": "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
         "amount": "11",
-        "currencyId": 0,
+        "CurrencyTokenOrder": 0,
         "nonce": 3,
         "type": "transfer",
-        "signature": "020ce2e0dd803aaf8b404824573df2bf9e64b0976e2963e03aac7917dcbe98beef"
+        "signature": "020e73381f6f75c7771836fb4194eb6196b370009b64ce3a0024e9496aba396693"
     },
     {
         "from": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "to": "2bf71372c10ad0759e94a08916a168673197a26bca52c0b8521769dff0b0232c",
         "amount": "11",
-        "currencyId": 0,
+        "CurrencyTokenOrder": 0,
         "nonce": 4,
         "type": "transfer",
-        "signature": "03222f83377d0e227528bcd7f461c92e4870c826264e73607d31258fc2ef3c533b"
+        "signature": "02249e13f55d46b0d49496ede231f992b56d8e3f471c05cc29b1f33967cbcb3c24"
     },
     {
         "from": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "to": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "amount": "11",
-        "currencyId": 5,
+        "CurrencyTokenOrder": 5,
         "type": "deposit"
     },
     {
         "from": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "to": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "amount": "11",
-        "currencyId": 5,
+        "CurrencyTokenOrder": 5,
         "type": "deposit"
     },
     {
         "from": "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
         "to": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "amount": "11",
-        "currencyId": 5,
+        "CurrencyTokenOrder": 5,
         "nonce": 5,
-        "type": "withdraw",
-        "signature": "030c3d926e5048a5954dc0e0825c8af3c7eb24c008a14f421b014592cbc3f5df27"
+        "type": "withdrawal",
+        "signature": "030fc855eb3ad0500e123a24e7c6b92d8bee0d76ddb1242c7dadca28f5e53fb908"
     },
     {
         "from": "095f7777e8c23209342ed0647791ab4e99bbe33a8f9114a338f0e7117fd9ff26",
         "to": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "amount": "3",
-        "currencyId": 1,
+        "CurrencyTokenOrder": 1,
         "nonce": 3,
-        "type": "withdraw",
-        "signature": "030904bdac3514c03ea2a13df3408fa95434f49d5de3ce112e819aab243c09d75d"
+        "type": "withdrawal",
+        "signature": "0306a00e12b0e3a59263bf653d380681e44d87f88983d18a1046d7e4552eee5c15"
     },
     {
         "from": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "to": "18aa3d8172424d45f21a1a8c5fce176b91e1c649748c1631a654d3b4c3e72c29",
         "amount": "10",
-        "currencyId": 5,
+        "CurrencyTokenOrder": 5,
         "type": "deposit"
     },
     {
         "from": "282e55a1f3608a3f92eca0f582aa10b02da7d79d47a5d3101095c1583bc328ad",
         "to": "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b",
         "amount": "10",
-        "currencyId": 0,
+        "CurrencyTokenOrder": 0,
         "nonce": 5,
-        "type": "withdraw",
-        "signature": "022b4c7d58c284e1e1667a6ee6d1e95b44be19f3b4f73d595e45b095f2e7c914f3"
+        "type": "withdrawal",
+        "signature": "031cfc3f6fa10b61d9a83a568ba241cefaf474b5abfecf33e14e609a8a639d52c8"
     }
 ]
