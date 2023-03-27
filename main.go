@@ -88,7 +88,50 @@ func main() {
 		return
 	}
 
-	message := hex.EncodeToString(prev_tree.Root) + hex.EncodeToString(tree.Root) + fmt.Sprintf("%064x", bn) + fmt.Sprintf("%064s", md5_sum_str)
+	message := ""
+	switch input_data.MetaData["message_type"] {
+	case "notarizeSettlementSignedByAllUsers":
+		message = SettlementSignedByAllUsersMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, bn)
+	case "notarizeSettlementWithDepositsAndWithdrawals":
+		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"])
+		if err != nil {
+			fmt.Println("error in queue size")
+			return
+		}
+		queue_hash, queue_index, ok := QueueHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting queue hash")
+			return
+		}
+		withdrawal_hash, ok := WithdrawalHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting withdrawal_hash")
+			return
+		}
+		message = SettlementWithDepositsAndWithdrawalsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), hex.EncodeToString(withdrawal_hash), bn)
+	case "notarizeSettlementWithDeposits":
+		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"])
+		if err != nil {
+			fmt.Println("error in queue size")
+			return
+		}
+		queue_hash, queue_index, ok := QueueHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting queue hash")
+			return
+		}
+		message = SettlementWithDepositsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), bn)
+	case "notarizeSettlementWithWithdrawals":
+		withdrawal_hash, ok := WithdrawalHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting withdrawal_hash")
+			return
+		}
+		message = SettlementWithWithdrawalsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, hex.EncodeToString(withdrawal_hash), bn)
+	default:
+		fmt.Println("error in message type")
+		return
+	}
 	signature, aggregated_public_key, failed_to_decrypt, successfully_decrypted, err := SignMessage(message, input_data.UserKeys)
 	if err != nil {
 		fmt.Println(err)

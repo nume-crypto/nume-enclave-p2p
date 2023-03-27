@@ -144,12 +144,16 @@ func TestQueueHash(t *testing.T) {
 		return
 	}
 	defer transactions_file.Close()
-	hash, ok := QueueHash(transactions, 30)
+	hash, queue_index, ok := QueueHash(transactions)
 	if !ok {
 		t.Errorf("Failed to hash queue")
 		return
 	}
-	expected_hash := "2bab89cfc123b0d6b63760e7375f15785a2bad8826c8c6343fb1fa4231ed071d"
+	if queue_index != 3 {
+		t.Errorf("Failed to get queue index expected 2 got %d", queue_index)
+		return
+	}
+	expected_hash := "2883f6a60418105861fb25e993926d38c51f2f766aca24e9f765c9583970910e"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -190,7 +194,7 @@ func TestWithdrawalHash(t *testing.T) {
 		t.Errorf("Failed to hash withdrawal")
 		return
 	}
-	expected_hash := "097f3b54615a19171b4c89b6ec46ae6f610538dad1d5bfb6c860ddbd35e51260"
+	expected_hash := "2e77edd0b06910a201e538a0caf93f0957e7bdbf06458f0be24cdce243b7a2ac"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return

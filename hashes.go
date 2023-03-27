@@ -124,30 +124,25 @@ func QueueItemHash(pub_key string, token_id uint, amount string) ([]byte, bool) 
 	return queue_hash, true
 }
 
-func QueueHash(queue []Transaction, max_len int) ([]byte, bool) {
+func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	var queue_hash []byte
 	hFunc := NewMiMC()
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
-		cb, ok := QueueItemHash(queue[i].From, queue[i].CurrencyTokenOrder, queue[i].Amount)
-		if !ok {
-			return queue_hash, ok
+		if queue[i].Type == "deposit" {
+			cb, ok := QueueItemHash(queue[i].From, queue[i].CurrencyTokenOrder, queue[i].Amount)
+			if !ok {
+				return queue_hash, 0, ok
+			}
+			valid_queue = append(valid_queue, cb)
 		}
-		valid_queue = append(valid_queue, cb)
-	}
-	for i := len(queue); i < max_len; i++ {
-		cb, ok := QueueItemHash(queue[len(queue)-1].From, queue[len(queue)-1].CurrencyTokenOrder, queue[len(queue)-1].Amount)
-		if !ok {
-			return queue_hash, ok
-		}
-		valid_queue = append(valid_queue, cb)
 	}
 	for _, item := range valid_queue {
 		hFunc.Write(item)
 		queue_hash = hFunc.Sum(nil)
 	}
 	hFunc.Reset()
-	return queue_hash, true
+	return queue_hash, len(valid_queue), true
 }
 
 func WithdrawalItemHash(amount string, token_id uint, address string) ([]byte, bool) {
@@ -179,11 +174,14 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, bool) {
 	hFunc := NewMiMC()
 	var valid_withdrawal [][]byte
 	for i := 0; i < len(withdrawal); i++ {
-		cb, ok := WithdrawalItemHash(withdrawal[i].Amount, withdrawal[i].CurrencyTokenOrder, withdrawal[i].To)
-		if !ok {
-			return withdrawal_hash, ok
+		if withdrawal[i].Type == "deposit" {
+			cb, ok := WithdrawalItemHash(withdrawal[i].Amount, withdrawal[i].CurrencyTokenOrder, withdrawal[i].To)
+			if !ok {
+				return withdrawal_hash, ok
+			}
+			valid_withdrawal = append(valid_withdrawal, cb)
 		}
-		valid_withdrawal = append(valid_withdrawal, cb)
+
 	}
 	for _, item := range valid_withdrawal {
 		hFunc.Write(item)

@@ -1,1 +1,6 @@
-{"max_num_balances":"8","max_num_user":"16"}
+{
+    "max_num_balances": "8",
+    "max_num_user": "16",
+    "type": "notarizeSettlementWithDepositsAndWithdrawals",
+    "last_handled_queue_index": "0"
+}
