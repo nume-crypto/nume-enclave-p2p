@@ -81,9 +81,13 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	new_balances, err := TransitionState(prev_balances, transactions, user_keys)
+	new_balances, settlement_type, err := TransitionState(prev_balances, transactions, user_keys)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
+		return
+	}
+	if settlement_type != "notarizeSettlementWithDepositsAndWithdrawals" {
+		t.Errorf("settlement_type = %s, want %s", settlement_type, "notarizeSettlementWithDepositsAndWithdrawals")
 		return
 	}
 

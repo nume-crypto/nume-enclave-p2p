@@ -130,8 +130,9 @@ func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
 		if queue[i].Type == "deposit" {
-			cb, ok := QueueItemHash(queue[i].From, queue[i].CurrencyTokenOrder, queue[i].Amount)
+			cb, ok := QueueItemHash(queue[i].To, queue[i].CurrencyTokenOrder, queue[i].Amount)
 			if !ok {
+				fmt.Println(i)
 				return queue_hash, 0, ok
 			}
 			valid_queue = append(valid_queue, cb)
@@ -169,17 +170,24 @@ func WithdrawalItemHash(amount string, token_id uint, address string) ([]byte, b
 	return withdrawal_hash, true
 }
 
-func WithdrawalHash(withdrawal []Transaction) ([]byte, bool) {
+func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []uint, bool) {
 	var withdrawal_hash []byte
+	var withdrawal_amounts []string
+	var withdrawal_addresses []string
+	var withdrawal_tokens []uint
+
 	hFunc := NewMiMC()
 	var valid_withdrawal [][]byte
 	for i := 0; i < len(withdrawal); i++ {
-		if withdrawal[i].Type == "deposit" {
+		if withdrawal[i].Type == "withdrawal" {
 			cb, ok := WithdrawalItemHash(withdrawal[i].Amount, withdrawal[i].CurrencyTokenOrder, withdrawal[i].To)
 			if !ok {
-				return withdrawal_hash, ok
+				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
 			}
 			valid_withdrawal = append(valid_withdrawal, cb)
+			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].Amount)
+			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
+			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].CurrencyTokenOrder)
 		}
 
 	}
@@ -188,5 +196,5 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, bool) {
 		withdrawal_hash = hFunc.Sum(nil)
 	}
 	hFunc.Reset()
-	return withdrawal_hash, true
+	return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, true
 }

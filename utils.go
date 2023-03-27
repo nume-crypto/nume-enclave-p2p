@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -65,4 +66,30 @@ func MapsEqual(m1, m2 map[uint]string) bool {
 		}
 	}
 	return reflect.DeepEqual(m1, m2)
+}
+
+func GetBalancesRoot(balances map[uint]string, max_num_balances int) (string, bool) {
+	hFunc := NewMiMC()
+	var balances_data = make([][]byte, max_num_balances)
+	for i := 0; i < max_num_balances; i++ {
+		if val, ok := balances[uint(i)]; ok {
+			cb, ok := new(big.Int).SetString(val, 16)
+			if !ok {
+				return "", ok
+			}
+			hFunc.Write(cb.Bytes())
+			balances_data[i] = hFunc.Sum(nil)
+			hFunc.Reset()
+		} else {
+			cb, ok := new(big.Int).SetString("0", 16)
+			if !ok {
+				return "", ok
+			}
+			hFunc.Write(cb.Bytes())
+			balances_data[i] = hFunc.Sum(nil)
+			hFunc.Reset()
+		}
+	}
+	balances_tree := NewMerkleTree(balances_data, hFunc)
+	return hex.EncodeToString(balances_tree.Root), true
 }

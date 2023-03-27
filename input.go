@@ -29,7 +29,7 @@ type UserKeys struct {
 }
 
 type InputData struct {
-	MetaData        map[string]string
+	MetaData        map[string]interface{}
 	NewUserBalances map[string]map[uint]string
 	OldUserBalances map[string]map[uint]string
 	Transactions    []Transaction
