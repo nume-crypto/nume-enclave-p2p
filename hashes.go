@@ -110,10 +110,12 @@ func QueueItemHash(pub_key string, token_id uint, amount string) ([]byte, bool) 
 
 	hFunc.Write(cb.Bytes())
 	hFunc.Sum(nil)
+
 	cb = new(big.Int).SetUint64(uint64(token_id))
 	hFunc.Write(cb.Bytes())
 	hFunc.Sum(nil)
-	cb, ok = new(big.Int).SetString(amount, 16)
+
+	cb, ok = new(big.Int).SetString(amount, 10)
 	if !ok {
 		return queue_hash, ok
 	}
@@ -149,13 +151,13 @@ func QueueHash(queue []Transaction) ([]byte, int, bool) {
 func WithdrawalItemHash(amount string, token_id uint, address string) ([]byte, bool) {
 	var withdrawal_hash []byte
 	hFunc := NewMiMC()
-	cb := new(big.Int).SetUint64(uint64(token_id))
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb, ok := new(big.Int).SetString(amount, 16)
+	cb, ok := new(big.Int).SetString(amount, 10)
 	if !ok {
 		return withdrawal_hash, ok
 	}
+	hFunc.Write(cb.Bytes())
+	hFunc.Sum(nil)
+	cb = new(big.Int).SetUint64(uint64(token_id))
 	hFunc.Write(cb.Bytes())
 	hFunc.Sum(nil)
 	cb, ok = new(big.Int).SetString(address, 16)
@@ -180,11 +182,18 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []uin
 	var valid_withdrawal [][]byte
 	for i := 0; i < len(withdrawal); i++ {
 		if withdrawal[i].Type == "withdrawal" {
-			cb, ok := WithdrawalItemHash(withdrawal[i].Amount, withdrawal[i].CurrencyTokenOrder, withdrawal[i].To)
+			cb, ok := new(big.Int).SetString(withdrawal[i].Amount, 10)
 			if !ok {
 				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
 			}
-			valid_withdrawal = append(valid_withdrawal, cb)
+			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
+			cb = new(big.Int).SetUint64(uint64(withdrawal[i].CurrencyTokenOrder))
+			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
+			cb, ok = new(big.Int).SetString(withdrawal[i].To+"000000000000000000000000", 16)
+			if !ok {
+				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
+			}
+			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
 			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].Amount)
 			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
 			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].CurrencyTokenOrder)

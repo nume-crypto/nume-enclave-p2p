@@ -12,9 +12,9 @@ import (
 
 func DecryptKeys(data map[string]UserKeys, kms_client *kms.KMS) ([]string, []uint, []uint, error) {
 
-	var keys []string
-	var failed_to_decrypt []uint
-	var successfully_decrypted []uint
+	keys := make([]string, 0)
+	failed_to_decrypt := make([]uint, 0)
+	successfully_decrypted := make([]uint, 0)
 
 	for _, v := range data {
 		b, err := base64.StdEncoding.DecodeString(v.EncryptedPrivateKey)

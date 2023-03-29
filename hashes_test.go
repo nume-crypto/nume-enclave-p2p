@@ -125,7 +125,7 @@ func TestQueueItemHash(t *testing.T) {
 		t.Errorf("Failed to hash queue item")
 		return
 	}
-	expected_hash := "1bbbc4c8724008a8f4a904a25812f7c8f5443071a170dc5224becb84f0faaa4d"
+	expected_hash := "219730f65f0e4f1747ee765930f120dee7b792a3e7bd8371ad7e10ad46850c2a"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -154,7 +154,7 @@ func TestQueueHash(t *testing.T) {
 		t.Errorf("Failed to get queue index expected 2 got %d", queue_index)
 		return
 	}
-	expected_hash := "2ea3e2818604f18fc2284aa91df8b9836691c0b412a5ea167345ce0028d95f67"
+	expected_hash := "15afb5e8c0454ef7ea1cb646b31804568f4f159c857361503599f279bfec2ca5"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -162,15 +162,15 @@ func TestQueueHash(t *testing.T) {
 }
 
 func TestWithdrawalItemHash(t *testing.T) {
-	pub_key := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
+	address := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
 	token_id := 1
 	amount := "99"
-	hash, ok := WithdrawalItemHash(pub_key, uint(token_id), amount)
+	hash, ok := WithdrawalItemHash(amount, uint(token_id), address)
 	if !ok {
 		t.Errorf("Failed to hash withdrawal item")
 		return
 	}
-	expected_hash := "24c527e892f7d82bbe520c19db281ada68a4af22d82a7adfe43274e4401a5c38"
+	expected_hash := "269e489766dad8078c78461af75cc3bbf2087a2649d1f0b71e012b58f3ab6ab3"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -210,7 +210,7 @@ func TestWithdrawalHash(t *testing.T) {
 		t.Errorf("Failed to get withdrawal tokens expected %v got %v", expected_withdrawal_tokens, withdrawal_tokens)
 		return
 	}
-	expected_hash := "08cbf245547c732cd9f6e0b9e954e9b4045d26949fc43cb1d660ec6bc3661168"
+	expected_hash := "13bab5f54040694d630e8c4ce188e7ef282590e1fa8a8c05041c5a2ef4a84895"
 	if hex.EncodeToString(withdrawal_hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(withdrawal_hash))
 		return

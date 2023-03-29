@@ -9,22 +9,24 @@ import (
 )
 
 type ResponseBody struct {
-	SettlementId                  uint      `json:"settlementId" binding:"required"`
-	Root                          string    `json:"root" binding:"required"`
-	AggregatedSignature           string    `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents []string  `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                   string    `json:"blockNumber" binding:"required"`
-	Type                          string    `json:"type" binding:"required"`
-	QueueHash                     string    `json:"queueHash" binding:"required"`
-	QueueIndex                    int       `json:"queueIndex" binding:"required"`
-	WithdrawalHash                string    `json:"withdrawalHash" binding:"required"`
-	WithdrawalAmounts             []string  `json:"withdrawalAmounts" binding:"required"`
-	WithdrawalAddresses           []string  `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalTokenIndex          []uint    `json:"withdrawalTokenIndex" binding:"required"`
-	MissingUserIds                []uint    `json:"missingUserIds" binding:"required"`
-	ActiveUserIds                 []uint    `json:"activeUserIds" binding:"required"`
-	SignatureRecordedAt           time.Time `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt           time.Time `json:"settlementStartedAt" binding:"required"`
+	SettlementId                  uint              `json:"settlementId" binding:"required"`
+	Root                          string            `json:"root" binding:"required"`
+	AggregatedSignature           string            `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                   string            `json:"blockNumber" binding:"required"`
+	Type                          string            `json:"type" binding:"required"`
+	QueueHash                     string            `json:"queueHash" binding:"required"`
+	QueueIndex                    int               `json:"queueIndex" binding:"required"`
+	WithdrawalHash                string            `json:"withdrawalHash" binding:"required"`
+	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
+	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalTokenIndex          []uint            `json:"withdrawalTokenIndex" binding:"required"`
+	Message                       string            `json:"message" binding:"required"`
+	UsersUpdated                  map[string]string `json:"usersUpdated" binding:"required"`
+	MissingUserIds                []uint            `json:"missingUserIds" binding:"required"`
+	ActiveUserIds                 []uint            `json:"activeUserIds" binding:"required"`
+	SignatureRecordedAt           time.Time         `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt           time.Time         `json:"settlementStartedAt" binding:"required"`
 }
 
 func main() {
@@ -89,7 +91,7 @@ func main() {
 	}
 	prev_tree := NewMerkleTree(prev_val_hash, hFunc)
 
-	new_balances, settlement_type, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, input_data.UserKeys)
+	new_balances, settlement_type, users_updated_map, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, input_data.UserKeys)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -106,7 +108,7 @@ func main() {
 		fmt.Println("error in block number")
 		return
 	}
-
+	users_updated := make(map[string]string)
 	i = 0
 	for _, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], max_num_balances)
@@ -118,6 +120,9 @@ func main() {
 		if !ok {
 			fmt.Println("error in getting leaf hash")
 			return
+		}
+		if users_updated_map[u.(string)] {
+			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		}
 		val_hash[i] = leaf
 		i++
@@ -144,6 +149,7 @@ func main() {
 	var withdrawal_addresses []string
 	var withdrawal_tokens []uint
 
+	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	switch settlement_type {
 	case "notarizeSettlementSignedByAllUsers":
 		message = SettlementSignedByAllUsersMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, bn)
@@ -198,6 +204,7 @@ func main() {
 		Root:                          hex.EncodeToString(tree.Root),
 		AggregatedSignature:           signature,
 		AggregatedPublicKeyComponents: aggregated_public_key,
+		Message:                       message,
 		BlockNumber:                   input_data.MetaData["block_number"].(string),
 		SignatureRecordedAt:           signature_recorded_at,
 		SettlementStartedAt:           settlement_started_at,
@@ -210,6 +217,7 @@ func main() {
 		WithdrawalAmounts:             withdrawal_amounts,
 		WithdrawalAddresses:           withdrawal_addresses,
 		WithdrawalTokenIndex:          withdrawal_tokens,
+		UsersUpdated:                  users_updated,
 	}
 	PrettyPrint(response)
 
