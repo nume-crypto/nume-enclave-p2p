@@ -51,7 +51,6 @@ func main() {
 		return
 	}
 	var prev_val_hash = make([][]byte, max_num_users)
-	var val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
 	for i := 0; i < max_num_balances; i++ {
 		cb, ok := new(big.Int).SetString("0", 16)
@@ -65,7 +64,7 @@ func main() {
 	}
 
 	empty_balances_tree := NewMerkleTree(empty_balances_data, hFunc)
-	i := 0
+
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], max_num_balances)
 		if !ok {
@@ -89,7 +88,7 @@ func main() {
 		}
 		prev_val_hash[i] = leaf
 	}
-	prev_tree := NewMerkleTree(prev_val_hash, hFunc)
+	tree := NewMerkleTree(prev_val_hash, hFunc)
 
 	new_balances, settlement_type, users_updated_map, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, input_data.UserKeys)
 	if err != nil {
@@ -109,8 +108,9 @@ func main() {
 		return
 	}
 	users_updated := make(map[string]string)
-	i = 0
-	for _, u := range input_data.MetaData["users_ordered"].([]interface{}) {
+	var prev_tree_root []byte
+	prev_tree_root = append(prev_tree_root, tree.Root...)
+	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], max_num_balances)
 		if !ok {
 			fmt.Println("error in getting balances root")
@@ -124,21 +124,13 @@ func main() {
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		}
-		val_hash[i] = leaf
+		tree.UpdateLeaf(i, hex.EncodeToString(leaf))
 		i++
 	}
+	var new_tree_root []byte
+	new_tree_root = append(new_tree_root, tree.Root...)
+	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
 
-	for i := len(input_data.NewUserBalances); i < max_num_users; i++ {
-		leaf, ok := GetLeafHash(strconv.FormatUint(uint64(i), 16), hex.EncodeToString(empty_balances_tree.Root))
-		if !ok {
-			fmt.Println("error in getting leaf hash")
-			return
-		}
-		val_hash[i] = leaf
-	}
-	tree := NewMerkleTree(val_hash, hFunc)
-
-	fmt.Println(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, bn)
 	message := ""
 	var queue_hash []byte
 	var queue_index int
@@ -152,7 +144,7 @@ func main() {
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	switch settlement_type {
 	case "notarizeSettlementSignedByAllUsers":
-		message = SettlementSignedByAllUsersMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, bn)
+		message = SettlementSignedByAllUsersMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
 	case "notarizeSettlementWithDepositsAndWithdrawals":
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -169,7 +161,7 @@ func main() {
 			fmt.Println("error in getting withdrawal_hash")
 			return
 		}
-		message = SettlementWithDepositsAndWithdrawalsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), hex.EncodeToString(withdrawal_hash), bn)
+		message = SettlementWithDepositsAndWithdrawalsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), hex.EncodeToString(withdrawal_hash), bn)
 	case "notarizeSettlementWithDeposits":
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -181,14 +173,14 @@ func main() {
 			fmt.Println("error in getting queue hash")
 			return
 		}
-		message = SettlementWithDepositsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), bn)
+		message = SettlementWithDepositsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), bn)
 	case "notarizeSettlementWithWithdrawals":
 		withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
 		if !ok {
 			fmt.Println("error in getting withdrawal_hash")
 			return
 		}
-		message = SettlementWithWithdrawalsMessage(hex.EncodeToString(prev_tree.Root), hex.EncodeToString(tree.Root), md5_sum_str, hex.EncodeToString(withdrawal_hash), bn)
+		message = SettlementWithWithdrawalsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, hex.EncodeToString(withdrawal_hash), bn)
 	default:
 		fmt.Println("error in message type")
 		return
@@ -201,7 +193,7 @@ func main() {
 
 	signature_recorded_at := time.Now()
 	response := ResponseBody{
-		Root:                          hex.EncodeToString(tree.Root),
+		Root:                          hex.EncodeToString(new_tree_root),
 		AggregatedSignature:           signature,
 		AggregatedPublicKeyComponents: aggregated_public_key,
 		Message:                       message,

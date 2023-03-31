@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"hash"
 	"math"
 	"sync"
@@ -158,4 +159,39 @@ func (tree MerkleTree) Verify(index int) bool {
 		}
 	}
 	return bytes.Equal(hash, tree.Root)
+}
+
+func (tree MerkleTree) UpdateLeaf(index int, new_leaf string) (string, error) {
+	hash, err := hex.DecodeString(new_leaf)
+	if err != nil {
+		return "", err
+	}
+	position := float64(index)
+	tree.Nodes[0][index].Data = hash
+	if index > -1 {
+		for i := 0; i < tree.height-1; i++ {
+			var neighbour []byte
+			if int64(position)%2 == 0 {
+				neighbour = tree.Nodes[i][int64(position+1)].Data[:]
+				position = math.Floor(position / 2)
+				hFunc := NewMiMC()
+				prevHashes := append(hash, neighbour...)
+				hFunc.Write(prevHashes)
+				hash = hFunc.Sum(nil)
+				hFunc.Reset()
+				tree.Nodes[i+1][int64(position)].Data = hash
+			} else {
+				neighbour = tree.Nodes[i][int64(position-1)].Data[:]
+				position = math.Floor((position - 1) / 2)
+				hFunc := NewMiMC()
+				prevHashes := append(neighbour, hash...)
+				hFunc.Write(prevHashes)
+				hash = hFunc.Sum(nil)
+				hFunc.Reset()
+				tree.Nodes[i+1][int64(position)].Data = hash
+			}
+		}
+	}
+	copy(tree.Root, hash)
+	return hex.EncodeToString(hash), nil
 }
