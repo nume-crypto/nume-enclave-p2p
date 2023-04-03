@@ -168,5 +168,17 @@ func TransitionState(state_balances map[string]map[uint]string, transactions []T
 			}
 		}
 	}
+	for user, balances := range state_balances {
+		for currency, balance := range balances {
+			amount, ok := new(big.Int).SetString(balance, 10)
+			if !ok {
+				return state_balances, settlement_type, users_updated, fmt.Errorf("error converting amount to big int")
+			}
+			if amount.Cmp(big.NewInt(0)) < 0 {
+				return state_balances, settlement_type, users_updated, fmt.Errorf("balance for user %s and currency %d is less than 0", user, currency)
+			}
+		}
+	}
+
 	return state_balances, settlement_type, users_updated, nil
 }

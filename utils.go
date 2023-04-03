@@ -46,10 +46,12 @@ func GetLeafHash(pub_key string, root string) ([]byte, bool) {
 
 func NestedMapsEqual(m1, m2 map[string]map[uint]string) bool {
 	if len(m1) != len(m2) {
+		fmt.Println("len(m1)", len(m1), "len(m2)", len(m2))
 		return false
 	}
 	for k, v1 := range m1 {
 		if v2, ok := m2[k]; !ok || !MapsEqual(v1, v2) {
+			fmt.Println("v1", v1, "v2", v2)
 			return false
 		}
 	}

@@ -98,15 +98,10 @@ func main() {
 	}
 	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
-		fmt.Println("new_balances", new_balances, input_data.NewUserBalances)
 		fmt.Println("new_balances and input_data.NewUserBalances are not equal")
 		return
 	}
-	bn, err := strconv.Atoi(input_data.MetaData["block_number"].(string))
-	if err != nil {
-		fmt.Println("error in block number")
-		return
-	}
+	bn := int(input_data.MetaData["block_number"].(float64))
 	users_updated := make(map[string]string)
 	var prev_tree_root []byte
 	prev_tree_root = append(prev_tree_root, tree.Root...)
@@ -140,6 +135,7 @@ func main() {
 	var withdrawal_amounts []string
 	var withdrawal_addresses []string
 	var withdrawal_tokens []uint
+	var queue_len int
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	switch settlement_type {
@@ -151,7 +147,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		queue_hash, queue_index, ok = QueueHash(input_data.Transactions)
+		queue_hash, queue_len, ok = QueueHash(input_data.Transactions)
 		if !ok {
 			fmt.Println("error in getting queue hash")
 			return
@@ -161,7 +157,8 @@ func main() {
 			fmt.Println("error in getting withdrawal_hash")
 			return
 		}
-		message = SettlementWithDepositsAndWithdrawalsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, uint(queue_index+last_handled_queue_index), hex.EncodeToString(queue_hash), hex.EncodeToString(withdrawal_hash), bn)
+		queue_index = queue_len + last_handled_queue_index
+		message = SettlementWithDepositsAndWithdrawalsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, uint(queue_index), hex.EncodeToString(queue_hash), hex.EncodeToString(withdrawal_hash), bn)
 	case "notarizeSettlementWithDeposits":
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -191,13 +188,15 @@ func main() {
 		return
 	}
 
+	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()
 	response := ResponseBody{
+		SettlementId:                  uint(input_data.MetaData["settlement_id"].(float64)),
 		Root:                          hex.EncodeToString(new_tree_root),
 		AggregatedSignature:           signature,
 		AggregatedPublicKeyComponents: aggregated_public_key,
 		Message:                       message,
-		BlockNumber:                   input_data.MetaData["block_number"].(string),
+		BlockNumber:                   bn_str,
 		SignatureRecordedAt:           signature_recorded_at,
 		SettlementStartedAt:           settlement_started_at,
 		MissingUserIds:                failed_to_decrypt,
