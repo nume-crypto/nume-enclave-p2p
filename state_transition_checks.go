@@ -131,7 +131,7 @@ func GetDeltaBalances(transactions []Transaction, user_keys map[string]UserKeys)
 	} else if has_transfer && has_deposit {
 		settlement_type = "notarizeSettlementWithDeposits"
 	} else if has_transfer && has_withdraw {
-		settlement_type = "notarizeSettlementWithdrawals"
+		settlement_type = "notarizeSettlementWithWithdrawals"
 	}
 	return delta_balances, settlement_type, users_updated_map, nil
 }

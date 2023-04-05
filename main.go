@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -77,7 +78,6 @@ func main() {
 			return
 		}
 		prev_val_hash[i] = leaf
-		i++
 	}
 
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
@@ -89,8 +89,16 @@ func main() {
 		prev_val_hash[i] = leaf
 	}
 	tree := NewMerkleTree(prev_val_hash, hFunc)
+	// 5 is default currency index when they register and dont do any deposit or transactions
+	init_state_balances := input_data.OldUserBalances
+	for _, u := range input_data.MetaData["users_ordered"].([]interface{}) {
+		if _, ok := init_state_balances[u.(string)]; !ok {
+			init_state_balances[u.(string)] = make(map[uint]string)
+			init_state_balances[u.(string)][5] = "0"
+		}
+	}
 
-	new_balances, settlement_type, users_updated_map, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, input_data.UserKeys)
+	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, input_data.UserKeys)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -118,9 +126,10 @@ func main() {
 		}
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
+		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
+			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		}
 		tree.UpdateLeaf(i, hex.EncodeToString(leaf))
-		i++
 	}
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
@@ -132,9 +141,9 @@ func main() {
 	var ok bool
 
 	var withdrawal_hash []byte
-	var withdrawal_amounts []string
-	var withdrawal_addresses []string
-	var withdrawal_tokens []uint
+	withdrawal_amounts := make([]string, 0)
+	withdrawal_addresses := make([]string, 0)
+	withdrawal_tokens := make([]uint, 0)
 	var queue_len int
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -179,7 +188,7 @@ func main() {
 		}
 		message = SettlementWithWithdrawalsMessage(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, hex.EncodeToString(withdrawal_hash), bn)
 	default:
-		fmt.Println("error in message type")
+		fmt.Println("error in message type", settlement_type)
 		return
 	}
 	signature, aggregated_public_key, failed_to_decrypt, successfully_decrypted, err := SignMessage(message, input_data.UserKeys)
@@ -202,9 +211,9 @@ func main() {
 		MissingUserIds:                failed_to_decrypt,
 		ActiveUserIds:                 successfully_decrypted,
 		Type:                          settlement_type,
-		QueueHash:                     hex.EncodeToString(queue_hash),
+		QueueHash:                     "0x" + hex.EncodeToString(queue_hash),
 		QueueIndex:                    queue_index,
-		WithdrawalHash:                hex.EncodeToString(withdrawal_hash),
+		WithdrawalHash:                "0x" + hex.EncodeToString(withdrawal_hash),
 		WithdrawalAmounts:             withdrawal_amounts,
 		WithdrawalAddresses:           withdrawal_addresses,
 		WithdrawalTokenIndex:          withdrawal_tokens,

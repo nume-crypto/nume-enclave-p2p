@@ -96,7 +96,7 @@ func SettlementWithDepositsAndWithdrawalsMessage(prev_root, new_root, tree_hash 
 }
 
 func SettlementWithWithdrawalsMessage(prev_root, new_root, tree_hash string, withdrawal_hash string, block_number int) string {
-	message := prev_root + new_root + fmt.Sprintf("%064s", tree_hash) + fmt.Sprintf("%064s", withdrawal_hash) + fmt.Sprintf("%064x", block_number)
+	message := prev_root + new_root + fmt.Sprintf("%064s", tree_hash) + fmt.Sprintf("%064x", block_number) + fmt.Sprintf("%064s", withdrawal_hash)
 	return message
 }
 
