@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -53,41 +54,52 @@ func main() {
 	}
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
-	for i := 0; i < max_num_balances; i++ {
-		cb, ok := new(big.Int).SetString("0", 16)
-		if !ok {
-			fmt.Println("error in decoding cb hash")
-			return
-		}
-		hFunc.Write(cb.Bytes())
-		empty_balances_data[i] = hFunc.Sum(nil)
-		hFunc.Reset()
+	zero, ok := new(big.Int).SetString("0", 16)
+	if !ok {
+		fmt.Println("error in decoding cb hash")
+		return
 	}
-
+	hFunc.Write(zero.Bytes())
+	zero_hash := hFunc.Sum(nil)
+	hFunc.Reset()
+	for i := 0; i < max_num_balances; i++ {
+		empty_balances_data[i] = zero_hash
+	}
 	empty_balances_tree := NewMerkleTree(empty_balances_data, hFunc)
 
+	var wg sync.WaitGroup
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], max_num_balances)
-		if !ok {
-			fmt.Println("error in getting balances root")
-			return
-		}
-		leaf, ok := GetLeafHash(u.(string), balances_root)
-		if !ok {
-			fmt.Println("error in getting leaf hash")
-			return
-		}
-		prev_val_hash[i] = leaf
+		wg.Add(1)
+		go func(i int, u interface{}) {
+			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], max_num_balances)
+			if !ok {
+				fmt.Println("error in getting balances root")
+				return
+			}
+			leaf, ok := GetLeafHash(u.(string), balances_root)
+			if !ok {
+				fmt.Println("error in getting leaf hash")
+				return
+			}
+			prev_val_hash[i] = leaf
+			wg.Done()
+		}(i, u)
 	}
+	wg.Wait()
 
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
-		leaf, ok := GetLeafHash(strconv.FormatUint(uint64(i), 16), hex.EncodeToString(empty_balances_tree.Root))
-		if !ok {
-			fmt.Println("error in getting leaf hash")
-			return
-		}
-		prev_val_hash[i] = leaf
+		wg.Add(1)
+		go func(i int) {
+			leaf, ok := GetLeafHash(strconv.FormatUint(uint64(i), 16), hex.EncodeToString(empty_balances_tree.Root))
+			if !ok {
+				fmt.Println("error in getting leaf hash")
+				return
+			}
+			prev_val_hash[i] = leaf
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 	tree := NewMerkleTree(prev_val_hash, hFunc)
 	// 5 is default currency index when they register and dont do any deposit or transactions
 	init_state_balances := input_data.OldUserBalances
@@ -138,7 +150,6 @@ func main() {
 	message := ""
 	var queue_hash []byte
 	var queue_index int
-	var ok bool
 
 	var withdrawal_hash []byte
 	withdrawal_amounts := make([]string, 0)

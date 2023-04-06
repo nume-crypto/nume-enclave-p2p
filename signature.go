@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,29 +16,38 @@ func DecryptKeys(data map[string]UserKeys, kms_client *kms.KMS) ([]string, []uin
 	keys := make([]string, 0)
 	failed_to_decrypt := make([]uint, 0)
 	successfully_decrypted := make([]uint, 0)
-
+	var global_err error
+	var wg sync.WaitGroup
 	for _, v := range data {
-		b, err := base64.StdEncoding.DecodeString(v.EncryptedPrivateKey)
-		if err != nil {
-			return keys, failed_to_decrypt, successfully_decrypted, err
-		}
-		input := &kms.DecryptInput{
-			CiphertextBlob: b,
-			GrantTokens: aws.StringSlice([]string{
-				"GrantTokenType",
-			}),
-		}
-		result, err := kms_client.Decrypt(input)
-		if err != nil {
-			// if user_status[k] {
-			// 	failed_to_decrypt = append(failed_to_decrypt, k)
-			// }
-		} else {
-			// if !user_status[k] {
-			// 	successfully_decrypted = append(successfully_decrypted, k)
-			// }
-			keys = append(keys, string(result.Plaintext))
-		}
+		wg.Add(1)
+		go func(v UserKeys) {
+			b, err := base64.StdEncoding.DecodeString(v.EncryptedPrivateKey)
+			if err != nil {
+				global_err = err
+			}
+			input := &kms.DecryptInput{
+				CiphertextBlob: b,
+				GrantTokens: aws.StringSlice([]string{
+					"GrantTokenType",
+				}),
+			}
+			result, err := kms_client.Decrypt(input)
+			if err != nil {
+				// if user_status[k] {
+				// 	failed_to_decrypt = append(failed_to_decrypt, k)
+				// }
+			} else {
+				// if !user_status[k] {
+				// 	successfully_decrypted = append(successfully_decrypted, k)
+				// }
+				keys = append(keys, string(result.Plaintext))
+			}
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	if global_err != nil {
+		return keys, failed_to_decrypt, successfully_decrypted, global_err
 	}
 	return keys, failed_to_decrypt, successfully_decrypted, nil
 }
