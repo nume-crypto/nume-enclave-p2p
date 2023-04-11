@@ -8,20 +8,17 @@ import (
 	"testing"
 )
 
-func TestDigitalSignatureMessageHash(t *testing.T) {
+func TestDigitalSignatureMessage(t *testing.T) {
 	from := "00"
 	to := "00"
-	currency := "0"
+	currency := 0
 	amount := "0"
-	nonce := "0"
-	hashed_message, ok := DigitalSignatureMessageHash(from, to, currency, amount, nonce)
-	if !ok {
-		t.Errorf("Failed to hash message")
-		return
-	}
+	nonce := 0
+	bn := 0
+	hashed_message := DigitalSignatureMessage(from, to, uint(currency), amount, uint64(nonce), int64(bn))
 	expected_hash := "0ba788e8a57932d9ba121cdc539a55a8d03541c192b08701fbf3af57681de759"
-	if hex.EncodeToString(hashed_message) != expected_hash {
-		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hex.EncodeToString(hashed_message))
+	if hashed_message != expected_hash {
+		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hashed_message)
 		return
 	}
 }
@@ -54,64 +51,6 @@ func TestG1Hash(t *testing.T) {
 	expected_hash := "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a"
 	if hex.EncodeToString(hashed_message) != expected_hash {
 		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hex.EncodeToString(hashed_message))
-		return
-	}
-}
-
-func TestSettlementWithDepositsMessage(t *testing.T) {
-	prev_root := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	current_root := "1960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb708"
-	tree_hash := "9e653ebf9b254458e53e7b073ff881a"
-	queue_index := uint(1)
-	queue_hash := "0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e"
-	block_number := 2
-	message := SettlementWithDepositsMessage(prev_root, current_root, tree_hash, queue_index, queue_hash, block_number)
-	expected_message := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc8551960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb7080000000000000000000000000000000009e653ebf9b254458e53e7b073ff881a00000000000000000000000000000000000000000000000000000000000000010f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e0000000000000000000000000000000000000000000000000000000000000002"
-	if message != expected_message {
-		t.Errorf("Failed to hash message expected %s got %s", expected_message, message)
-		return
-	}
-}
-
-func TestSettlementSignedByAllUsersMessage(t *testing.T) {
-	prev_root := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	current_root := "1960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb708"
-	tree_hash := "9e653ebf9b254458e53e7b073ff881a"
-	block_number := 2
-	message := SettlementSignedByAllUsersMessage(prev_root, current_root, tree_hash, block_number)
-	expected_message := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc8551960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb7080000000000000000000000000000000009e653ebf9b254458e53e7b073ff881a0000000000000000000000000000000000000000000000000000000000000002"
-	if message != expected_message {
-		t.Errorf("Failed to hash message expected %s got %s", expected_message, message)
-		return
-	}
-}
-
-func TestSettlementWithDepositsAndWithdrawalsMessage(t *testing.T) {
-	prev_root := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	current_root := "1960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb708"
-	tree_hash := "9e653ebf9b254458e53e7b073ff881a"
-	queue_index := uint(1)
-	queue_hash := "0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e"
-	withdrawal_hash := "0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd91"
-	block_number := 2
-	message := SettlementWithDepositsAndWithdrawalsMessage(prev_root, current_root, tree_hash, queue_index, queue_hash, withdrawal_hash, block_number)
-	expected_message := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc8551960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb7080000000000000000000000000000000009e653ebf9b254458e53e7b073ff881a00000000000000000000000000000000000000000000000000000000000000010f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd910000000000000000000000000000000000000000000000000000000000000002"
-	if message != expected_message {
-		t.Errorf("Failed to hash message expected %s got %s", expected_message, message)
-		return
-	}
-}
-
-func TestSettlementWithWithdrawalsMessage(t *testing.T) {
-	prev_root := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	current_root := "1960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb708"
-	tree_hash := "9e653ebf9b254458e53e7b073ff881a"
-	withdrawal_hash := "0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e"
-	block_number := 2
-	message := SettlementWithWithdrawalsMessage(prev_root, current_root, tree_hash, withdrawal_hash, block_number)
-	expected_message := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc8551960a8abb428a13ebf10b6632e14748aa4e38b758edeaf2d831aee00739bb7080000000000000000000000000000000009e653ebf9b254458e53e7b073ff881a0f6bc10b6e3d746d5f040e2b93cbb10e10ec22d4bb5aca47d4f64db86906fd9e0000000000000000000000000000000000000000000000000000000000000002"
-	if message != expected_message {
-		t.Errorf("Failed to hash message expected %s got %s", expected_message, message)
 		return
 	}
 }

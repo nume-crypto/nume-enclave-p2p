@@ -17,6 +17,7 @@ type Transaction struct {
 	CurrencyTokenOrder uint
 	Type               string
 	Signature          string
+	IsInvalid          bool
 	CreatedAt          time.Time
 }
 

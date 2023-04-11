@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os/exec"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ func DecryptKeys(data map[string]UserKeys, kms_client *kms.KMS) ([]string, []uin
 			}
 			result, err := kms_client.Decrypt(input)
 			if err != nil {
+				fmt.Println(err)
 				// if user_status[k] {
 				// 	failed_to_decrypt = append(failed_to_decrypt, k)
 				// }
