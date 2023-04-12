@@ -160,17 +160,23 @@ func GetDeltaBalances(transactions []Transaction, user_keys map[string]UserKeys,
 	settlement_type = 0
 	if has_deposit {
 		settlement_type = 1
-	} else if has_withdraw {
+	}
+	if has_withdraw {
 		settlement_type = 2
-	} else if has_contract_withdrawal {
+	}
+	if has_contract_withdrawal {
 		settlement_type = 3
-	} else if has_deposit && has_withdraw {
+	}
+	if has_deposit && has_withdraw {
 		settlement_type = 4
-	} else if has_deposit && has_contract_withdrawal {
+	}
+	if has_deposit && has_contract_withdrawal {
 		settlement_type = 5
-	} else if has_withdraw && has_contract_withdrawal {
+	}
+	if has_withdraw && has_contract_withdrawal {
 		settlement_type = 6
-	} else if has_deposit && has_withdraw && has_contract_withdrawal {
+	}
+	if has_deposit && has_withdraw && has_contract_withdrawal {
 		settlement_type = 7
 	}
 

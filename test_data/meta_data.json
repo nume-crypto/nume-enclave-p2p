@@ -1,6 +1,17 @@
 {
-    "block_number": "33515519",
+    "block_number": 3,
+    "last_handled_cw_queue_index": "4",
+    "last_handled_queue_index": "4",
     "max_num_balances": "8",
-    "max_num_user": "16",
-    "last_handled_queue_index": "0"
+    "max_num_users": "16",
+    "settlement_id": 4,
+    "users_ordered": [
+        "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
+        "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
+        "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a",
+        "095f7777e8c23209342ed0647791ab4e99bbe33a8f9114a338f0e7117fd9ff26",
+        "2bf71372c10ad0759e94a08916a168673197a26bca52c0b8521769dff0b0232c",
+        "18aa3d8172424d45f21a1a8c5fce176b91e1c649748c1631a654d3b4c3e72c29",
+        "282e55a1f3608a3f92eca0f582aa10b02da7d79d47a5d3101095c1583bc328ad"
+    ]
 }

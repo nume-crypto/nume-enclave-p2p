@@ -81,14 +81,14 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	block_number := int64(1)
+	block_number := int64(3)
 	new_balances, settlement_type, _, err := TransitionState(prev_balances, transactions, user_keys, block_number)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return
 	}
-	if settlement_type != 3 {
-		t.Errorf("settlement_type = %d, want %d", settlement_type, 3)
+	if settlement_type != 7 {
+		t.Errorf("settlement_type = %d, want %d", settlement_type, 7)
 		return
 	}
 
