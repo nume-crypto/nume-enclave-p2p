@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"strconv"
 	"sync"
 	"time"
+
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 type ResponseBody struct {
@@ -22,10 +23,10 @@ type ResponseBody struct {
 	WithdrawalHash                  string            `json:"withdrawalHash" binding:"required"` // withdrawal
 	WithdrawalAmounts               []string          `json:"withdrawalAmounts" binding:"required"`
 	WithdrawalAddresses             []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalTokenIndex            []uint            `json:"withdrawalTokenIndex" binding:"required"`
+	WithdrawalTokenIndex            []string          `json:"withdrawalTokenIndex" binding:"required"`
 	ContractWithdrawalAddresses     []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
 	ContractWithdrawalAmounts       []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokenIndex    []uint            `json:"contractWithdrawalTokenIndex" binding:"required"`
+	ContractWithdrawalTokenIndex    []string          `json:"contractWithdrawalTokenIndex" binding:"required"`
 	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex" binding:"required"`
 	ContractWithdrawalHashedBlsKeys []string          `json:"contractWithdrawalHashedBlsKeys" binding:"required"`
 	Message                         string            `json:"message" binding:"required"` // message
@@ -43,7 +44,6 @@ func main() {
 	if err != nil {
 		fmt.Println("read err", err)
 	}
-	hFunc := NewMiMC()
 
 	max_num_balances, err := strconv.Atoi(input_data.MetaData["max_num_balances"].(string))
 	if err != nil {
@@ -57,63 +57,48 @@ func main() {
 	}
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
-	zero, ok := new(big.Int).SetString("0", 16)
-	if !ok {
-		fmt.Println("error in decoding cb hash")
-		return
-	}
-	hFunc.Write(zero.Bytes())
-	zero_hash := hFunc.Sum(nil)
-	hFunc.Reset()
+	zero_hash := solsha3.SoliditySHA3(
+		[]string{"address", "uint256"},
+		[]interface{}{
+			"0x0000000000000000000000000000000000000000",
+			"0",
+		},
+	)
 	for i := 0; i < max_num_balances; i++ {
 		empty_balances_data[i] = zero_hash
 	}
-	empty_balances_tree := NewMerkleTree(empty_balances_data, hFunc)
+	empty_balances_tree := NewMerkleTree(empty_balances_data)
 
 	var wg sync.WaitGroup
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
 		go func(i int, u interface{}) {
-			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], max_num_balances)
+			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.UserBalanceOrder[u.(string)], max_num_balances)
 			if !ok {
 				fmt.Println("error in getting balances root")
 				return
 			}
-			leaf, ok := GetLeafHash(u.(string), balances_root)
-			if !ok {
-				fmt.Println("error in getting leaf hash")
-				return
-			}
+			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root)
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i, u)
 	}
 	wg.Wait()
-
+	fmt.Println(len(input_data.OldUserBalances))
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
-			leaf, ok := GetLeafHash(strconv.FormatUint(uint64(i), 16), hex.EncodeToString(empty_balances_tree.Root))
-			if !ok {
-				fmt.Println("error in getting leaf hash")
-				return
-			}
+			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root))
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
-	tree := NewMerkleTree(prev_val_hash, hFunc)
-	// 5 is default currency index when they register and dont do any deposit or transactions
+	tree := NewMerkleTree(prev_val_hash)
+
 	init_state_balances := input_data.OldUserBalances
-	for _, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		if _, ok := init_state_balances[u.(string)]; !ok {
-			init_state_balances[u.(string)] = make(map[uint]string)
-			init_state_balances[u.(string)][5] = "0"
-		}
-	}
 	block_number := input_data.MetaData["block_number"].(float64)
-	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, input_data.UserKeys, int64(block_number))
+	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, int64(block_number))
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -129,16 +114,12 @@ func main() {
 	var prev_tree_root []byte
 	prev_tree_root = append(prev_tree_root, tree.Root...)
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], max_num_balances)
+		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.UserBalanceOrder[u.(string)], max_num_balances)
 		if !ok {
 			fmt.Println("error in getting balances root")
 			return
 		}
-		leaf, ok := GetLeafHash(u.(string), balances_root)
-		if !ok {
-			fmt.Println("error in getting leaf hash")
-			return
-		}
+		leaf := GetLeafHash(u.(string), "0x"+balances_root)
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
@@ -157,16 +138,17 @@ func main() {
 	var withdrawal_hash []byte
 	withdrawal_amounts := make([]string, 0)
 	withdrawal_addresses := make([]string, 0)
-	withdrawal_tokens := make([]uint, 0)
+	withdrawal_tokens := make([]string, 0)
 	var queue_len int
 
 	cw_addresses := make([]string, 0)
-	cw_token_ids := make([]uint, 0)
+	cw_token_ids := make([]string, 0)
 	cw_amounts := make([]string, 0)
 	cw_bls_keys := make([]string, 0)
 	var cw_queue_hash []byte
 	var cw_queue_index int
 	var cw_queue_len int
+	var ok bool
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	fmt.Println("settlement_type", settlement_type)
@@ -216,7 +198,7 @@ func main() {
 		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
 	}
 
-	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.UserKeys)
+	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.ValidatorKeys)
 	if err != nil {
 		fmt.Println(err)
 		return

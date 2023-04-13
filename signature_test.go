@@ -11,16 +11,16 @@ import (
 func TestDecrypt(t *testing.T) {
 	sess := session.Must(session.NewSession())
 	kms_client := kms.New(sess, aws.NewConfig().WithRegion("us-east-1"))
-	user_keys := make(map[string]UserKeys)
-	user_keys["1"] = UserKeys{
+	user_keys := make(map[string]ValidatorKeys)
+	user_keys["1"] = ValidatorKeys{
 		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
 		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
 	}
-	user_keys["2"] = UserKeys{
+	user_keys["2"] = ValidatorKeys{
 		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
 		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
 	}
-	user_keys["3"] = UserKeys{
+	user_keys["3"] = ValidatorKeys{
 		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPp",
 		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
 	}
@@ -75,8 +75,8 @@ func TestAggregateSignature(t *testing.T) {
 }
 
 func TestSignMessage(t *testing.T) {
-	user_keys := make(map[string]UserKeys)
-	user_keys["162ef608bf92f47846fbf53481f1b0504e3bd1f1678376b20139bd94cf0003eb"] = UserKeys{
+	user_keys := make(map[string]ValidatorKeys)
+	user_keys["162ef608bf92f47846fbf53481f1b0504e3bd1f1678376b20139bd94cf0003eb"] = ValidatorKeys{
 		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAGN9n0CV+9w2tjYAqrVQWhcAAAAojCBnwYJKoZIhvcNAQcGoIGRMIGOAgEAMIGIBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDItcDL4lPiDkr7spewIBEIBbRb6Pltakos+qO7Ocpv0aiXT4GqF/8kMqm4pTFXMVO698rjL1u7PrudG09yiXvTVR3n/4hQrQf+LoGBi4CXTlc80z/f3OXTAB5tJCwNhOLAPgKZmo5X9MAT759A==",
 		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
 	}
@@ -97,13 +97,9 @@ func TestSignMessage(t *testing.T) {
 
 func TestVerifyDigitalSignature(t *testing.T) {
 	message := "10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d"
-	aggregated_public_key_components := []string{
-		"0abbdf1e100b1020b1178060decc6f5b257f0a39ea6f7baf506f8039b38f4caf",
-		"0af72d12a44c88aeff2d19488c258e3f1a5006f895362a587bb3a2156208df34",
-		"098b5d055ad316e2870258ab279bc467b5b93c114b6aabd472c571079c7ac3af",
-		"08cc1c223fc7044fb37e527835fa1c7cae3acff0b19fa97d3170dad41673524d"}
+	aggregated_public_key_components := ""
 	sig := "020da5e5a5fb0ca69acbdb01554ab258199f17588e9d4aec7d79f353cdad987280"
-	verified := VerifyDigitalSignature(message, sig, aggregated_public_key_components)
+	verified := EthVerify(message, sig, aggregated_public_key_components)
 	if !verified {
 		t.Errorf("Expected true, got false")
 		return

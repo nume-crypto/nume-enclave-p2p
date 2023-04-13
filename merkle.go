@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"hash"
 	"math"
+	"math/big"
 	"sync"
+
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 type MerkleTree struct {
 	Root   []byte
 	Nodes  [][]MerkleNode
-	hFunc  hash.Hash
 	height int
 }
 
@@ -27,11 +28,13 @@ func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
 	if left == nil && right == nil {
 		node.Data = data[:]
 	} else {
-		hFunc := NewMiMC()
-		hFunc.Write(left.Data)
-		hFunc.Sum(nil)
-		hFunc.Write(right.Data)
-		hash := hFunc.Sum(nil)
+		hash := solsha3.SoliditySHA3(
+			[]string{"uint256", "uint256"},
+			[]interface{}{
+				new(big.Int).SetBytes(left.Data),
+				new(big.Int).SetBytes(right.Data),
+			},
+		)
 		node.Data = hash[:]
 	}
 
@@ -41,9 +44,8 @@ func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
 	return &node
 }
 
-func NewMerkleTree(data [][]byte, h hash.Hash) *MerkleTree {
+func NewMerkleTree(data [][]byte) *MerkleTree {
 	var tree MerkleTree
-	tree.hFunc = h
 
 	if len(data)%2 != 0 {
 		data = append(data, data[len(data)-1])
@@ -107,14 +109,23 @@ func NewMerkleTree(data [][]byte, h hash.Hash) *MerkleTree {
 		leaves_in_level /= 2
 	}
 	wg.Wait()
+	// fmt.Println("Merkle Tree: ")
+	// for i := 0; i < merkle_tree_height; i++ {
+	// 	for j := 0; j < len(merkle_tree_org[i]); j++ {
+	// 		fmt.Println(hex.EncodeToString(merkle_tree_org[i][j].Data))
+	// 	}
+	// }
+	// fmt.Println("Merkle Tree Height: ", merkle_tree_height)
+
 	tree.Nodes = merkle_tree_org
 	tree.Root = merkle_tree_org[merkle_tree_height-1][0].Data[:]
 	tree.height = merkle_tree_height
 	return &tree
 }
 
-func (tree MerkleTree) Proof(index int) [][]byte {
+func (tree MerkleTree) Proof(index int) ([][]byte, []int64) {
 	var proof [][]byte
+	var helper []int64
 	position := float64(index)
 	if index > -1 {
 		for i := 0; i < tree.height-1; i++ {
@@ -123,14 +134,16 @@ func (tree MerkleTree) Proof(index int) [][]byte {
 				neighbour = tree.Nodes[i][int64(position+1)]
 				position = math.Floor(position / 2)
 				proof = append(proof, neighbour.Data)
+				helper = append(helper, 1)
 			} else {
 				neighbour = tree.Nodes[i][int64(position-1)]
 				position = math.Floor((position - 1) / 2)
 				proof = append(proof, neighbour.Data)
+				helper = append(helper, 0)
 			}
 		}
 	}
-	return proof
+	return proof, helper
 }
 
 func (tree MerkleTree) Verify(index int) bool {
@@ -142,19 +155,23 @@ func (tree MerkleTree) Verify(index int) bool {
 			if int64(position)%2 == 0 {
 				neighbour = tree.Nodes[i][int64(position+1)].Data[:]
 				position = math.Floor(position / 2)
-				hFunc := NewMiMC()
-				prevHashes := append(hash, neighbour...)
-				hFunc.Write(prevHashes)
-				hash = hFunc.Sum(nil)
-				hFunc.Reset()
+				hash = solsha3.SoliditySHA3(
+					[]string{"uint256", "uint256"},
+					[]interface{}{
+						new(big.Int).SetBytes(hash),
+						new(big.Int).SetBytes(neighbour),
+					},
+				)
 			} else {
 				neighbour = tree.Nodes[i][int64(position-1)].Data[:]
 				position = math.Floor((position - 1) / 2)
-				hFunc := NewMiMC()
-				prevHashes := append(neighbour, hash...)
-				hFunc.Write(prevHashes)
-				hash = hFunc.Sum(nil)
-				hFunc.Reset()
+				hash = solsha3.SoliditySHA3(
+					[]string{"uint256", "uint256"},
+					[]interface{}{
+						new(big.Int).SetBytes(neighbour),
+						new(big.Int).SetBytes(hash),
+					},
+				)
 			}
 		}
 	}
@@ -174,20 +191,24 @@ func (tree MerkleTree) UpdateLeaf(index int, new_leaf string) (string, error) {
 			if int64(position)%2 == 0 {
 				neighbour = tree.Nodes[i][int64(position+1)].Data[:]
 				position = math.Floor(position / 2)
-				hFunc := NewMiMC()
-				prevHashes := append(hash, neighbour...)
-				hFunc.Write(prevHashes)
-				hash = hFunc.Sum(nil)
-				hFunc.Reset()
+				hash = solsha3.SoliditySHA3(
+					[]string{"uint256", "uint256"},
+					[]interface{}{
+						new(big.Int).SetBytes(hash),
+						new(big.Int).SetBytes(neighbour),
+					},
+				)
 				tree.Nodes[i+1][int64(position)].Data = hash
 			} else {
 				neighbour = tree.Nodes[i][int64(position-1)].Data[:]
 				position = math.Floor((position - 1) / 2)
-				hFunc := NewMiMC()
-				prevHashes := append(neighbour, hash...)
-				hFunc.Write(prevHashes)
-				hash = hFunc.Sum(nil)
-				hFunc.Reset()
+				hash = solsha3.SoliditySHA3(
+					[]string{"uint256", "uint256"},
+					[]interface{}{
+						new(big.Int).SetBytes(neighbour),
+						new(big.Int).SetBytes(hash),
+					},
+				)
 				tree.Nodes[i+1][int64(position)].Data = hash
 			}
 		}

@@ -29,7 +29,7 @@ func TestCheckNonce(t *testing.T) {
 }
 
 func TestTransitionState(t *testing.T) {
-	prev_balances := make(map[string]map[uint]string)
+	prev_balances := make(map[string]map[string]string)
 	prev_balances_file, err := os.Open("test_data/prev_balances.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/prev_balances.json")
@@ -55,7 +55,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer transactions_file.Close()
 
-	new_balances_desired := make(map[string]map[uint]string)
+	new_balances_desired := make(map[string]map[string]string)
 	new_balances_file, err := os.Open("test_data/new_balances.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/new_balances.json")
@@ -68,7 +68,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	user_keys := make(map[string]UserKeys)
+	user_keys := make(map[string]ValidatorKeys)
 	user_keys_file, err := os.Open("test_data/user_keys.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/user_keys.json")
@@ -82,7 +82,7 @@ func TestTransitionState(t *testing.T) {
 	defer new_balances_file.Close()
 
 	block_number := int64(3)
-	new_balances, settlement_type, _, err := TransitionState(prev_balances, transactions, user_keys, block_number)
+	new_balances, settlement_type, _, err := TransitionState(prev_balances, transactions, block_number)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return

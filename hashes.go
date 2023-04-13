@@ -3,135 +3,113 @@ package main
 import (
 	"fmt"
 	"math/big"
+
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
-func DigitalSignatureMessage(from string, to string, currency uint, amount string, nonce uint64, block_number int64) string {
+func DigitalSignatureMessage(from string, to string, currency string, amount string, nonce uint64, block_number int64) string {
 	if len(to) != 64 {
 		to += "000000000000000000000000"
+	}
+	if len(from) != 64 {
+		from += "000000000000000000000000"
+	}
+	if len(currency) != 64 {
+		currency += "000000000000000000000000"
 	}
 	amt, ok := new(big.Int).SetString(amount, 10)
 	if !ok {
 		return ""
 	}
-	return from + to + fmt.Sprintf("%064x", currency) + fmt.Sprintf("%064x", amt) + fmt.Sprintf("%064x", nonce) + fmt.Sprintf("%064x", block_number)
+	return fmt.Sprintf("%064s", from[2:]) + fmt.Sprintf("%064s", to[2:]) + fmt.Sprintf("%064s", currency[2:]) + fmt.Sprintf("%064x", amt) + fmt.Sprintf("%064x", nonce) + fmt.Sprintf("%064x", block_number)
 }
 
-func LeafHash(pub_key string, balance_root string) ([]byte, bool) {
-	hFunc := NewMiMC()
-	var hashed_message []byte
-	cb, ok := new(big.Int).SetString(pub_key, 16)
-	if !ok {
-		return hashed_message, false
-	}
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb, ok = new(big.Int).SetString(balance_root, 16)
-	if !ok {
-		return hashed_message, false
-	}
-	hFunc.Write(cb.Bytes())
-	hashed_message = hFunc.Sum(nil)
-	hFunc.Reset()
-	return hashed_message, true
-}
-
-func G1Hash(g1_keys [2]string) ([]byte, bool) {
-	hFunc := NewMiMC()
-	var hashed_message []byte
-	cb, ok := new(big.Int).SetString(g1_keys[0], 16)
-	if !ok {
-		return hashed_message, false
-	}
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb, ok = new(big.Int).SetString(g1_keys[1], 16)
-	if !ok {
-		return hashed_message, false
-	}
-	hFunc.Write(cb.Bytes())
-	hashed_message = hFunc.Sum(nil)
-	hFunc.Reset()
-	return hashed_message, true
-}
-
-func QueueItemHash(pub_key string, token_id uint, amount string) ([]byte, bool) {
+func QueueItemHash(pub_key string, token_id string, amount string) ([]byte, bool) {
 	var queue_hash []byte
-	hFunc := NewMiMC()
-	cb, ok := new(big.Int).SetString(pub_key, 16)
+
+	cb1, ok := new(big.Int).SetString(pub_key, 16)
 	if !ok {
 		return queue_hash, ok
 	}
 
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-
-	cb = new(big.Int).SetUint64(uint64(token_id))
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-
-	cb, ok = new(big.Int).SetString(amount, 10)
+	cb2, ok := new(big.Int).SetString(token_id, 16)
 	if !ok {
 		return queue_hash, ok
 	}
-	hFunc.Write(cb.Bytes())
-	queue_hash = hFunc.Sum(nil)
 
-	hFunc.Reset()
+	cb3, ok := new(big.Int).SetString(amount, 10)
+	if !ok {
+		return queue_hash, ok
+	}
+
+	queue_hash = solsha3.SoliditySHA3(
+		[]string{"uint256", "uint256", "uint256"},
+		[]interface{}{
+			cb1,
+			cb2,
+			cb3,
+		},
+	)
 	return queue_hash, true
 }
 
 func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	var queue_hash []byte
-	hFunc := NewMiMC()
+
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
 		if queue[i].Type == "deposit" {
-			cb, ok := QueueItemHash(queue[i].To, queue[i].CurrencyTokenOrder, queue[i].Amount)
+			cb, ok := QueueItemHash(queue[i].To, queue[i].Currency, queue[i].Amount)
 			if !ok {
 				return queue_hash, 0, ok
 			}
 			valid_queue = append(valid_queue, cb)
 		}
 	}
+	types := []string{}
+	values := []interface{}{}
 	for _, item := range valid_queue {
-		hFunc.Write(item)
-		queue_hash = hFunc.Sum(nil)
+		types = append(types, "uint256")
+		values = append(values, new(big.Int).SetBytes(item))
 	}
-	hFunc.Reset()
+	queue_hash = solsha3.SoliditySHA3(
+		types,
+		values,
+	)
 	return queue_hash, len(valid_queue), true
 }
 
 func WithdrawalItemHash(amount string, token_id uint, address string) ([]byte, bool) {
 	var withdrawal_hash []byte
-	hFunc := NewMiMC()
-	cb, ok := new(big.Int).SetString(amount, 10)
+
+	cb1, ok := new(big.Int).SetString(amount, 10)
 	if !ok {
 		return withdrawal_hash, ok
 	}
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb = new(big.Int).SetUint64(uint64(token_id))
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb, ok = new(big.Int).SetString(address, 16)
+	cb2 := new(big.Int).SetUint64(uint64(token_id))
+	cb3, ok := new(big.Int).SetString(address, 16)
 	if !ok {
 		return withdrawal_hash, ok
 	}
 
-	hFunc.Write(cb.Bytes())
-	withdrawal_hash = hFunc.Sum(nil)
+	withdrawal_hash = solsha3.SoliditySHA3(
+		[]string{"uint256", "uint256", "uint256"},
+		[]interface{}{
+			cb1,
+			cb2,
+			cb3,
+		},
+	)
 
-	hFunc.Reset()
 	return withdrawal_hash, true
 }
 
-func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []uint, bool) {
+func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []string, bool) {
 	var withdrawal_hash []byte
 	var withdrawal_amounts []string
 	var withdrawal_addresses []string
-	var withdrawal_tokens []uint
+	var withdrawal_tokens []string
 
-	hFunc := NewMiMC()
 	var valid_withdrawal [][]byte
 	for i := 0; i < len(withdrawal); i++ {
 		if withdrawal[i].Type == "withdrawal" {
@@ -140,7 +118,10 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []uin
 				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
 			}
 			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
-			cb = new(big.Int).SetUint64(uint64(withdrawal[i].CurrencyTokenOrder))
+			cb, ok = new(big.Int).SetString(withdrawal[i].Currency, 10)
+			if !ok {
+				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
+			}
 			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
 			cb, ok = new(big.Int).SetString(withdrawal[i].To+"000000000000000000000000", 16)
 			if !ok {
@@ -149,63 +130,65 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []uin
 			valid_withdrawal = append(valid_withdrawal, cb.Bytes())
 			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].Amount)
 			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
-			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].CurrencyTokenOrder)
+			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].Currency)
 		}
 
 	}
+	types := []string{}
+	values := []interface{}{}
 	for _, item := range valid_withdrawal {
-		hFunc.Write(item)
-		withdrawal_hash = hFunc.Sum(nil)
+		types = append(types, "uint256")
+		values = append(values, new(big.Int).SetBytes(item))
 	}
-	hFunc.Reset()
+	withdrawal_hash = solsha3.SoliditySHA3(
+		types,
+		values,
+	)
+
 	return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, true
 }
 
-func WithdrawalQueueItemHash(pub_key string, to string, token_id uint, amount string) ([]byte, bool) {
+func WithdrawalQueueItemHash(pub_key string, to string, token_id string, amount string) ([]byte, bool) {
 	var queue_hash []byte
-	hFunc := NewMiMC()
-	cb, ok := new(big.Int).SetString(pub_key, 16)
+	cb1, ok := new(big.Int).SetString(pub_key, 16)
 	if !ok {
 		return queue_hash, ok
 	}
-
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-	cb, ok = new(big.Int).SetString(to+"000000000000000000000000", 16)
+	cb2, ok := new(big.Int).SetString(to+"000000000000000000000000", 16)
 	if !ok {
 		return queue_hash, ok
 	}
-
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-
-	cb = new(big.Int).SetUint64(uint64(token_id))
-	hFunc.Write(cb.Bytes())
-	hFunc.Sum(nil)
-
-	cb, ok = new(big.Int).SetString(amount, 10)
+	cb3, ok := new(big.Int).SetString(token_id, 16)
 	if !ok {
 		return queue_hash, ok
 	}
-	hFunc.Write(cb.Bytes())
-	queue_hash = hFunc.Sum(nil)
-
-	hFunc.Reset()
+	cb4, ok := new(big.Int).SetString(amount, 10)
+	if !ok {
+		return queue_hash, ok
+	}
+	queue_hash = solsha3.SoliditySHA3(
+		[]string{"uint256", "uint256", "uint256", "uint256"},
+		[]interface{}{
+			cb1,
+			cb2,
+			cb3,
+			cb4,
+		},
+	)
 	return queue_hash, true
 }
 
-func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, []uint, []string, bool) {
+func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, []string, []string, bool) {
 	var queue_hash []byte
 	var amounts []string
 	var addresses []string
-	var tokens []uint
+	var tokens []string
 	var bls_keys []string
 
-	hFunc := NewMiMC()
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
 		if queue[i].Type == "contract_withdrawal" {
-			cb, ok := WithdrawalQueueItemHash(queue[i].From, queue[i].To, queue[i].CurrencyTokenOrder, queue[i].Amount)
+			cb, ok := WithdrawalQueueItemHash(queue[i].From, queue[i].To, queue[i].Currency, queue[i].Amount)
 			if !ok {
 				return queue_hash, 0, addresses, amounts, tokens, bls_keys, ok
 			}
@@ -217,15 +200,21 @@ func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, 
 			}
 			addresses = append(addresses, queue[i].To)
 			amounts = append(amounts, queue[i].Amount)
-			tokens = append(tokens, queue[i].CurrencyTokenOrder)
+			tokens = append(tokens, queue[i].Currency)
 			bls_keys = append(bls_keys, queue[i].From)
 
 		}
 	}
+	types := []string{}
+	values := []interface{}{}
 	for _, item := range valid_queue {
-		hFunc.Write(item)
-		queue_hash = hFunc.Sum(nil)
+		types = append(types, "uint256")
+		values = append(values, new(big.Int).SetBytes(item))
 	}
-	hFunc.Reset()
+	queue_hash = solsha3.SoliditySHA3(
+		types,
+		values,
+	)
+
 	return queue_hash, len(addresses), addresses, amounts, tokens, bls_keys, true
 }

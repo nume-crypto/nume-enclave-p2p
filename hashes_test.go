@@ -11,11 +11,11 @@ import (
 func TestDigitalSignatureMessage(t *testing.T) {
 	from := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29"
 	to := "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a"
-	currency := 0
+	currency := "0"
 	amount := "1880000000000000000"
 	nonce := 1
 	bn := 1
-	hashed_message := DigitalSignatureMessage(from, to, uint(currency), amount, uint64(nonce), int64(bn))
+	hashed_message := DigitalSignatureMessage(from, to, currency, amount, uint64(nonce), int64(bn))
 	expected_hash := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a171a0a11bc000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
 	if hashed_message != expected_hash {
 		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hashed_message)
@@ -23,43 +23,11 @@ func TestDigitalSignatureMessage(t *testing.T) {
 	}
 }
 
-func TestLeafHash(t *testing.T) {
-	pub_key := "00"
-	balance_root := "00"
-	hashed_message, ok := LeafHash(pub_key, balance_root)
-	if !ok {
-		t.Errorf("Failed to hash message")
-		return
-	}
-	expected_hash := "302927ba94dfa8136f80c1896185578157b5811cf031c06ab9686f5a1d89b94d"
-	if hex.EncodeToString(hashed_message) != expected_hash {
-		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hex.EncodeToString(hashed_message))
-		return
-	}
-}
-
-func TestG1Hash(t *testing.T) {
-	pub_key_g1 := [2]string{
-		"22e9eda228ccc6368167df61fc8daffffc08e3b0a573787c236a64699671e000",
-		"2c532e2d6cb2c03dd41d61632d2c8d726cb49d08eac94233df96e4f77a1b6c1f",
-	}
-	hashed_message, ok := G1Hash(pub_key_g1)
-	if !ok {
-		t.Errorf("Failed to hash message")
-		return
-	}
-	expected_hash := "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a"
-	if hex.EncodeToString(hashed_message) != expected_hash {
-		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hex.EncodeToString(hashed_message))
-		return
-	}
-}
-
 func TestQueueItemHash(t *testing.T) {
 	pub_key := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	token_id := 1
+	token := "token_id"
 	amount := "99"
-	hash, ok := QueueItemHash(pub_key, uint(token_id), amount)
+	hash, ok := QueueItemHash(pub_key, token, amount)
 	if !ok {
 		t.Errorf("Failed to hash queue item")
 		return
@@ -159,9 +127,9 @@ func TestWithdrawalHash(t *testing.T) {
 func TestWithdrawalQueueItemHash(t *testing.T) {
 	from := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29"
 	to := "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"
-	token := 1
+	token := "1"
 	amt := "1880000000000000000"
-	hash, ok := WithdrawalQueueItemHash(from, to, uint(token), amt)
+	hash, ok := WithdrawalQueueItemHash(from, to, token, amt)
 	if !ok {
 		t.Errorf("Failed to hash withdrawal queue item")
 		return

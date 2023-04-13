@@ -10,18 +10,18 @@ import (
 )
 
 type Transaction struct {
-	From               string
-	To                 string
-	Amount             string
-	Nonce              uint
-	CurrencyTokenOrder uint
-	Type               string
-	Signature          string
-	IsInvalid          bool
-	CreatedAt          time.Time
+	From      string
+	To        string
+	Amount    string
+	Nonce     uint
+	Currency  string
+	Type      string
+	Signature string
+	IsInvalid bool
+	CreatedAt time.Time
 }
 
-type UserKeys struct {
+type ValidatorKeys struct {
 	BlsG1PublicKey      []string
 	BlsG2PublicKey      []string
 	HashedPublicKey     string
@@ -30,11 +30,12 @@ type UserKeys struct {
 }
 
 type InputData struct {
-	MetaData        map[string]interface{}
-	NewUserBalances map[string]map[uint]string
-	OldUserBalances map[string]map[uint]string
-	Transactions    []Transaction
-	UserKeys        map[string]UserKeys
+	MetaData         map[string]interface{}
+	NewUserBalances  map[string]map[string]string
+	OldUserBalances  map[string]map[string]string
+	UserBalanceOrder map[string][]string
+	Transactions     []Transaction
+	ValidatorKeys    map[string]ValidatorKeys
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -76,11 +77,19 @@ func GetData(path string) (InputData, string, error) {
 	if err != nil {
 		return input_data, "", err
 	}
-	plan, err = os.ReadFile(path + "/user_keys.json")
+	plan, err = os.ReadFile(path + "/validators.json")
 	if err != nil {
 		return input_data, "", err
 	}
-	err = json.Unmarshal(plan, &input_data.UserKeys)
+	err = json.Unmarshal(plan, &input_data.ValidatorKeys)
+	if err != nil {
+		return input_data, "", err
+	}
+	plan, err = os.ReadFile(path + "/user_balance_order.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
 	if err != nil {
 		return input_data, "", err
 	}
