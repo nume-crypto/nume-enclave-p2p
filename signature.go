@@ -99,8 +99,12 @@ func SignMessage(message string, user_keys map[string]ValidatorKeys) (string, []
 }
 
 func EthVerify(message string, sig string, pubkey string) bool {
-	msg_bytes := []byte(message)
-	full_msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(msg_bytes), msg_bytes)
+	msg_bytes, err := hex.DecodeString(message)
+	if err != nil {
+		return false
+	}
+	hashed_msg := crypto.Keccak256(msg_bytes)
+	full_msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(hashed_msg), hashed_msg)
 	hash := solsha3.SoliditySHA3(
 		[]string{"string"},
 		[]interface{}{
@@ -122,8 +126,7 @@ func EthVerify(message string, sig string, pubkey string) bool {
 		return false
 	}
 	recovered_address := crypto.PubkeyToAddress(*recovered)
-	// fmt.Println("recovered_address:", recovered_address.String())
-	if recovered_address.String() == pubkey {
+	if strings.ToLower(recovered_address.String()) == pubkey {
 		return true
 	} else {
 		return false

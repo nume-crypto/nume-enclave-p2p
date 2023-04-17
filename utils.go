@@ -26,7 +26,6 @@ func TimeTrack(start time.Time, name string) {
 }
 
 func GetLeafHash(address string, root string) []byte {
-	fmt.Println(root, address)
 	hash := solsha3.SoliditySHA3(
 		[]string{"address", "bytes32"},
 		[]interface{}{

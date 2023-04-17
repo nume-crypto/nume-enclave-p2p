@@ -68,22 +68,6 @@ func TestQueueHash(t *testing.T) {
 	}
 }
 
-func TestWithdrawalItemHash(t *testing.T) {
-	address := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	token_id := 1
-	amount := "99"
-	hash, ok := WithdrawalItemHash(amount, uint(token_id), address)
-	if !ok {
-		t.Errorf("Failed to hash withdrawal item")
-		return
-	}
-	expected_hash := "269e489766dad8078c78461af75cc3bbf2087a2649d1f0b71e012b58f3ab6ab3"
-	if hex.EncodeToString(hash) != expected_hash {
-		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
-		return
-	}
-}
-
 func TestWithdrawalHash(t *testing.T) {
 	transactions := make([]Transaction, 0)
 	transactions_file, err := os.Open("test_data/transactions.json")

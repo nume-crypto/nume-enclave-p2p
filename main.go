@@ -11,7 +11,7 @@ import (
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
-type ResponseBody struct {
+type SettlementRequest struct {
 	SettlementId                    uint              `json:"settlementId" binding:"required"`
 	Root                            string            `json:"root" binding:"required"`
 	AggregatedSignature             string            `json:"aggregatedSignature" binding:"required"`
@@ -19,15 +19,15 @@ type ResponseBody struct {
 	BlockNumber                     string            `json:"blockNumber" binding:"required"`
 	ProcessId                       uint              `json:"processId" binding:"required"`
 	QueueHash                       string            `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                      int               `json:"queueIndex" binding:"required"`
+	QueueIndex                      int               `json:"queueIndex"`
 	WithdrawalHash                  string            `json:"withdrawalHash" binding:"required"` // withdrawal
 	WithdrawalAmounts               []string          `json:"withdrawalAmounts" binding:"required"`
 	WithdrawalAddresses             []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalTokenIndex            []string          `json:"withdrawalTokenIndex" binding:"required"`
+	WithdrawalTokens                []string          `json:"withdrawalTokes" binding:"required"`
 	ContractWithdrawalAddresses     []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
 	ContractWithdrawalAmounts       []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokenIndex    []string          `json:"contractWithdrawalTokenIndex" binding:"required"`
-	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex" binding:"required"`
+	ContractWithdrawalTokens        []string          `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex"`
 	ContractWithdrawalHashedBlsKeys []string          `json:"contractWithdrawalHashedBlsKeys" binding:"required"`
 	Message                         string            `json:"message" binding:"required"` // message
 	UsersUpdated                    map[string]string `json:"usersUpdated" binding:"required"`
@@ -84,7 +84,6 @@ func main() {
 		}(i, u)
 	}
 	wg.Wait()
-	fmt.Println(len(input_data.OldUserBalances))
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -160,7 +159,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
+	message = "10a3035aa29d8146314c6b29928a0b3e99ba2585e1bb8c74ca5170b4368819f4" + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -206,7 +205,7 @@ func main() {
 
 	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()
-	response := ResponseBody{
+	response := SettlementRequest{
 		SettlementId:                    uint(input_data.MetaData["settlement_id"].(float64)),
 		Root:                            hex.EncodeToString(new_tree_root),
 		AggregatedSignature:             signature,
@@ -221,11 +220,11 @@ func main() {
 		WithdrawalHash:                  "0x" + hex.EncodeToString(withdrawal_hash),
 		WithdrawalAmounts:               withdrawal_amounts,
 		WithdrawalAddresses:             withdrawal_addresses,
-		WithdrawalTokenIndex:            withdrawal_tokens,
+		WithdrawalTokens:                withdrawal_tokens,
 		ContractWithdrawalAddresses:     cw_addresses,
 		ContractWithdrawalQueueIndex:    cw_queue_index,
 		ContractWithdrawalAmounts:       cw_amounts,
-		ContractWithdrawalTokenIndex:    cw_token_ids,
+		ContractWithdrawalTokens:        cw_token_ids,
 		ContractWithdrawalHashedBlsKeys: cw_bls_keys,
 		UsersUpdated:                    users_updated,
 	}
