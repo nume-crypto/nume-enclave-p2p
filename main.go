@@ -12,27 +12,26 @@ import (
 )
 
 type SettlementRequest struct {
-	SettlementId                    uint              `json:"settlementId" binding:"required"`
-	Root                            string            `json:"root" binding:"required"`
-	AggregatedSignature             string            `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents   []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                     string            `json:"blockNumber" binding:"required"`
-	ProcessId                       uint              `json:"processId" binding:"required"`
-	QueueHash                       string            `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                      int               `json:"queueIndex"`
-	WithdrawalHash                  string            `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmounts               []string          `json:"withdrawalAmounts" binding:"required"`
-	WithdrawalAddresses             []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalTokens                []string          `json:"withdrawalTokes" binding:"required"`
-	ContractWithdrawalAddresses     []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts       []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokens        []string          `json:"contractWithdrawalTokes" binding:"required"`
-	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex"`
-	ContractWithdrawalHashedBlsKeys []string          `json:"contractWithdrawalHashedBlsKeys" binding:"required"`
-	Message                         string            `json:"message" binding:"required"` // message
-	UsersUpdated                    map[string]string `json:"usersUpdated" binding:"required"`
-	SignatureRecordedAt             time.Time         `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt             time.Time         `json:"settlementStartedAt" binding:"required"`
+	SettlementId                  uint              `json:"settlementId" binding:"required"`
+	Root                          string            `json:"root" binding:"required"`
+	AggregatedSignature           string            `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                   string            `json:"blockNumber" binding:"required"`
+	ProcessId                     uint              `json:"processId" binding:"required"`
+	QueueHash                     string            `json:"queueHash" binding:"required"` // deposit
+	QueueIndex                    int               `json:"queueIndex"`
+	WithdrawalHash                string            `json:"withdrawalHash" binding:"required"` // withdrawal
+	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
+	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalTokens              []string          `json:"withdrawalTokes" binding:"required"`
+	ContractWithdrawalAddresses   []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
+	ContractWithdrawalAmounts     []string          `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalTokens      []string          `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex  int               `json:"contractWithdrawalQueueIndex"`
+	Message                       string            `json:"message" binding:"required"` // message
+	UsersUpdated                  map[string]string `json:"usersUpdated" binding:"required"`
+	SignatureRecordedAt           time.Time         `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt           time.Time         `json:"settlementStartedAt" binding:"required"`
 }
 
 func main() {
@@ -143,7 +142,6 @@ func main() {
 	cw_addresses := make([]string, 0)
 	cw_token_ids := make([]string, 0)
 	cw_amounts := make([]string, 0)
-	cw_bls_keys := make([]string, 0)
 	var cw_queue_hash []byte
 	var cw_queue_index int
 	var cw_queue_len int
@@ -159,7 +157,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = "10a3035aa29d8146314c6b29928a0b3e99ba2585e1bb8c74ca5170b4368819f4" + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -180,9 +178,9 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		cw_queue_hash, cw_queue_len, cw_addresses, cw_amounts, cw_token_ids, cw_bls_keys, ok = WithdrawalQueueHash(input_data.Transactions)
+		cw_queue_hash, cw_queue_len, cw_addresses, cw_amounts, cw_token_ids, ok = WithdrawalQueueHash(input_data.Transactions)
 		if !ok {
-			fmt.Println("error in getting queue hash")
+			fmt.Println("error in getting cw queue hash")
 			return
 		}
 		message += fmt.Sprintf("%064x", cw_queue_len+last_handled_cw_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(cw_queue_hash))
@@ -206,27 +204,26 @@ func main() {
 	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()
 	response := SettlementRequest{
-		SettlementId:                    uint(input_data.MetaData["settlement_id"].(float64)),
-		Root:                            hex.EncodeToString(new_tree_root),
-		AggregatedSignature:             signature,
-		AggregatedPublicKeyComponents:   aggregated_public_key,
-		Message:                         message,
-		BlockNumber:                     bn_str,
-		SignatureRecordedAt:             signature_recorded_at,
-		SettlementStartedAt:             settlement_started_at,
-		ProcessId:                       settlement_type,
-		QueueHash:                       "0x" + hex.EncodeToString(queue_hash),
-		QueueIndex:                      queue_index,
-		WithdrawalHash:                  "0x" + hex.EncodeToString(withdrawal_hash),
-		WithdrawalAmounts:               withdrawal_amounts,
-		WithdrawalAddresses:             withdrawal_addresses,
-		WithdrawalTokens:                withdrawal_tokens,
-		ContractWithdrawalAddresses:     cw_addresses,
-		ContractWithdrawalQueueIndex:    cw_queue_index,
-		ContractWithdrawalAmounts:       cw_amounts,
-		ContractWithdrawalTokens:        cw_token_ids,
-		ContractWithdrawalHashedBlsKeys: cw_bls_keys,
-		UsersUpdated:                    users_updated,
+		SettlementId:                  uint(input_data.MetaData["settlement_id"].(float64)),
+		Root:                          hex.EncodeToString(new_tree_root),
+		AggregatedSignature:           signature,
+		AggregatedPublicKeyComponents: aggregated_public_key,
+		Message:                       message,
+		BlockNumber:                   bn_str,
+		SignatureRecordedAt:           signature_recorded_at,
+		SettlementStartedAt:           settlement_started_at,
+		ProcessId:                     settlement_type,
+		QueueHash:                     "0x" + hex.EncodeToString(queue_hash),
+		QueueIndex:                    queue_index,
+		WithdrawalHash:                "0x" + hex.EncodeToString(withdrawal_hash),
+		WithdrawalAmounts:             withdrawal_amounts,
+		WithdrawalAddresses:           withdrawal_addresses,
+		WithdrawalTokens:              withdrawal_tokens,
+		ContractWithdrawalAddresses:   cw_addresses,
+		ContractWithdrawalQueueIndex:  cw_queue_index,
+		ContractWithdrawalAmounts:     cw_amounts,
+		ContractWithdrawalTokens:      cw_token_ids,
+		UsersUpdated:                  users_updated,
 	}
 	PrettyPrint(response)
 
