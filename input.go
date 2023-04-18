@@ -10,6 +10,7 @@ import (
 )
 
 type Transaction struct {
+	Id        uint
 	From      string
 	To        string
 	Amount    string
@@ -36,6 +37,7 @@ type InputData struct {
 	UserBalanceOrder map[string][]string
 	Transactions     []Transaction
 	ValidatorKeys    map[string]ValidatorKeys
+	AddressPublicKeyData map[string]string
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -90,6 +92,14 @@ func GetData(path string) (InputData, string, error) {
 		return input_data, "", err
 	}
 	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
+	if err != nil {
+		return input_data, "", err
+	}
+	plan, err = os.ReadFile(path + "/address_public_key_map.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.AddressPublicKeyData)
 	if err != nil {
 		return input_data, "", err
 	}

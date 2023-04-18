@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
@@ -125,6 +126,25 @@ func main() {
 		}
 		tree.UpdateLeaf(i, hex.EncodeToString(leaf))
 	}
+	// find leaves and upload
+	leafMap := make(map[int]string)
+	for i := 0; i < len(tree.Nodes[0]); i++ {
+		leaf := tree.Nodes[0][i].Data
+		leafMap[i] = hex.EncodeToString(leaf)
+	}
+	
+	// Convert the `leafMap` map to a JSON string.
+	leafData, err := json.Marshal(leafMap)
+	if err != nil {
+		panic(err)
+	}
+	// Upload Merkle leafData to S3
+	_ = leafData
+
+	// Upload Public Transaction Data to S3
+	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
+	_ = public_transaction_data
+
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
 	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
