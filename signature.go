@@ -1,21 +1,25 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/ethereum/go-ethereum/crypto"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
-func DecryptKeys(data map[string]ValidatorKeys, kms_client *kms.KMS) ([]string, []uint, []uint, error) {
+type KmsRequest struct {
+	AwsAccessKeyId     string `json:"AwsAccessKeyId"`
+	AwsSecretAccessKey string `json:"AwsSecretAccessKey"`
+	AwsSessionToken    string `json:"AwsSessionToken"`
+	CipherText         string `json:"CipherText"`
+}
+
+func DecryptKeys(data map[string]ValidatorKeys, kms_payload KmsPayload) ([]string, []uint, []uint, error) {
 
 	keys := make([]string, 0)
 	failed_to_decrypt := make([]uint, 0)
@@ -25,27 +29,24 @@ func DecryptKeys(data map[string]ValidatorKeys, kms_client *kms.KMS) ([]string, 
 	for _, v := range data {
 		wg.Add(1)
 		go func(v ValidatorKeys) {
-			b, err := base64.StdEncoding.DecodeString(v.EncryptedPrivateKey)
-			if err != nil {
-				global_err = err
+			request := KmsRequest{
+				AwsAccessKeyId:     kms_payload.AccessKeyId,
+				AwsSecretAccessKey: kms_payload.SecretAccessKey,
+				AwsSessionToken:    kms_payload.Token,
+				CipherText:         v.EncryptedPrivateKey,
 			}
-			input := &kms.DecryptInput{
-				CiphertextBlob: b,
-				GrantTokens: aws.StringSlice([]string{
-					"GrantTokenType",
-				}),
-			}
-			result, err := kms_client.Decrypt(input)
+			payload_bytes, err := json.Marshal(request)
 			if err != nil {
-				fmt.Println(err, v.CMKId)
-				// if user_status[k] {
-				// 	failed_to_decrypt = append(failed_to_decrypt, k)
-				// }
+				fmt.Printf("Error: %s", err)
+			}
+			kmslib := "./kmstool_enclave"
+			cmd := exec.Command(kmslib, string(payload_bytes))
+			cmd.Dir = "app/"
+			stdout, err := cmd.Output()
+			if err != nil {
+				fmt.Println("E1X : " + fmt.Sprint(err) + ": stdout : " + string(stdout))
 			} else {
-				// if !user_status[k] {
-				// 	successfully_decrypted = append(successfully_decrypted, k)
-				// }
-				keys = append(keys, string(result.Plaintext))
+				keys = append(keys, string(stdout))
 			}
 			wg.Done()
 		}(v)
@@ -80,13 +81,11 @@ func AggregateSignature(message string, keys []string) (string, []string, error)
 	return strings.TrimSpace(strings.Split(subres, `"`)[1]), aggregated_public_key_components, err
 }
 
-func SignMessage(message string, user_keys map[string]ValidatorKeys) (string, []string, []uint, []uint, error) {
+func SignMessage(message string, user_keys map[string]ValidatorKeys, kms_payload KmsPayload) (string, []string, []uint, []uint, error) {
 
-	sess := session.Must(session.NewSession())
-	kms_client := kms.New(sess, aws.NewConfig().WithRegion("us-east-1"))
 
 	var aggregated_public_key_components []string
-	keys, failed_to_decrypt, successfully_decrypted, err := DecryptKeys(user_keys, kms_client)
+	keys, failed_to_decrypt, successfully_decrypted, err := DecryptKeys(user_keys, kms_payload)
 	if err != nil {
 		return "", aggregated_public_key_components, failed_to_decrypt, successfully_decrypted, err
 	}

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,8 +11,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mdlayher/vsock"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
+
+type KmsPayload struct {
+	AccessKeyId     string `json:"AccessKeyId"`
+	SecretAccessKey string `json:"SecretAccessKey"`
+	Token           string `json:"Token"`
+}
 
 type SettlementRequest struct {
 	SettlementId                  uint              `json:"settlementId" binding:"required"`
@@ -40,7 +49,14 @@ func main() {
 	defer TimeTrack(time.Now(), "main")
 	settlement_started_at := time.Now()
 
-	input_data, md5_sum_str, err := GetData("./data")
+	con, err := vsock.Dial(3, 1024, nil)
+	if err != nil {
+		fmt.Println("Error at Socket Dialing", err)
+		return
+	}
+	defer con.Close()
+
+	input_data, md5_sum_str, err := GetDataOverSocket(con)
 	if err != nil {
 		fmt.Println("read err", err)
 	}
@@ -138,12 +154,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	md5_leaf_data := md5.Sum(bytes.TrimRight(leafData, "\n"))
+	md5_leaf_data_str := hex.EncodeToString(md5_leaf_data[:])
 	// Upload Merkle leafData to S3
-	_ = leafData
+	con.Write([]byte("S3_UPLOAD" + string(leafData) + "\n"))
+	leaf_upload_response, _ := bufio.NewReader(con).ReadBytes('\n')
+	if err != nil {
+		fmt.Println("failure in saving response")
+	}
+	fmt.Println("leaf_upload_response from server: ", string(leaf_upload_response))
 
 	// Upload Public Transaction Data to S3
 	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
-	_ = public_transaction_data
+	publicTxDataBytes, err := json.Marshal(public_transaction_data)
+	if err != nil {
+		panic(err)
+	}
+	con.Write([]byte("S3_UPLOAD" + string(publicTxDataBytes) + "\n"))
+	public_transaction_data_response, _ := bufio.NewReader(con).ReadBytes('\n')
+	if err != nil {
+		fmt.Println("failure in saving response")
+	}
+	fmt.Println("public_transaction_data_response from server: ", string(public_transaction_data_response))
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
@@ -168,6 +200,7 @@ func main() {
 	var ok bool
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
+	md5_leaf_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	fmt.Println("settlement_type", settlement_type)
 	// process ID 0: only L2 transactions (+4)
 	// process ID 1: deposit (+2)
@@ -177,7 +210,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str)+ fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -215,7 +248,7 @@ func main() {
 		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
 	}
 
-	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.ValidatorKeys)
+	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.ValidatorKeys, input_data.KmsPayload)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -247,4 +280,20 @@ func main() {
 	}
 	PrettyPrint(response)
 
+	// Sending final Response to server
+	merkle_root_response, err := json.Marshal(response)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		return
+	}
+	con.Write([]byte("REGISTER_ROOT" + string(merkle_root_response) + "\n"))
+	apiresponse, _ := bufio.NewReader(con).ReadBytes('\n')
+	if err != nil {
+		fmt.Println("failure in saving response")
+	}
+	fmt.Println("Message from server: ", string(apiresponse))
+
+
+	con.Write([]byte("STOP" + "\n"))
+	fmt.Println("EXITING : Sending to Server: STOP")
 }
