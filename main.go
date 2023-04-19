@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -139,7 +140,8 @@ func main() {
 		panic(err)
 	}
 	// Upload Merkle leafData to S3
-	_ = leafData
+	md5_leaf_data := md5.Sum(bytes.TrimRight(leafData, "\n"))
+	md5_leaf_data_str := hex.EncodeToString(md5_leaf_data[:])
 
 	// Upload Public Transaction Data to S3
 	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
@@ -168,6 +170,7 @@ func main() {
 	var ok bool
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
+	md5_leaf_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	fmt.Println("settlement_type", settlement_type)
 	// process ID 0: only L2 transactions (+4)
 	// process ID 1: deposit (+2)
@@ -177,7 +180,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
