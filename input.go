@@ -18,6 +18,7 @@ type Transaction struct {
 	Currency  string
 	Type      string
 	Signature string
+	Data      string
 	IsInvalid bool
 	CreatedAt time.Time
 }
@@ -31,12 +32,12 @@ type ValidatorKeys struct {
 }
 
 type InputData struct {
-	MetaData         map[string]interface{}
-	NewUserBalances  map[string]map[string]string
-	OldUserBalances  map[string]map[string]string
-	UserBalanceOrder map[string][]string
-	Transactions     []Transaction
-	ValidatorKeys    map[string]ValidatorKeys
+	MetaData             map[string]interface{}
+	NewUserBalances      map[string]map[string]string
+	OldUserBalances      map[string]map[string]string
+	UserBalanceOrder     map[string][]string
+	Transactions         []Transaction
+	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
 }
 

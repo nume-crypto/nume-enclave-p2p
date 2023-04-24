@@ -10,46 +10,46 @@ func CheckNonce(last_nonce, current_nonce uint64) bool {
 }
 
 type TransferTransaction struct {
-    ID               uint
-    EncryptionOutputs []string `json:"encryptionOutputs"`
+	ID                uint
+	EncryptionOutputs []string `json:"encryptionOutputs"`
 }
 
 type TransactionPublicData struct {
-    Transactions []TransferTransaction `json:"transactions"`
+	Transactions []TransferTransaction `json:"transactions"`
 }
 
-func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
-	var transferTransactions []TransferTransaction
-	for _, transaction := range transactions {
-		switch transaction.Type {
-		case "transfer":
-			if address_pubkey_map[transaction.From] != "" && address_pubkey_map[transaction.To] != "" {
-				encryptedTxSender,err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.From])
-				if err != nil {
-					fmt.Println("unable to encrypt message for ", transaction.From)
-					continue
-				}
-				encryptedTxReceiver,err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.To])
-				if err != nil {
-					fmt.Println("unable to encrypt message for ", transaction.To)
-					continue
-				}
-				transferTransaction := TransferTransaction{
-					ID: transaction.Id,
-					EncryptionOutputs: []string{encryptedTxSender, encryptedTxReceiver},
-				}
-				transferTransactions = append(transferTransactions, transferTransaction)
-			}
-		}
-	}
+// func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
+// 	var transferTransactions []TransferTransaction
+// 	for _, transaction := range transactions {
+// 		switch transaction.Type {
+// 		case "transfer":
+// 			if address_pubkey_map[transaction.From] != "" && address_pubkey_map[transaction.To] != "" {
+// 				encryptedTxSender, err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.From])
+// 				if err != nil {
+// 					fmt.Println("unable to encrypt message for ", transaction.From)
+// 					continue
+// 				}
+// 				encryptedTxReceiver, err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.To])
+// 				if err != nil {
+// 					fmt.Println("unable to encrypt message for ", transaction.To)
+// 					continue
+// 				}
+// 				transferTransaction := TransferTransaction{
+// 					ID:                transaction.Id,
+// 					EncryptionOutputs: []string{encryptedTxSender, encryptedTxReceiver},
+// 				}
+// 				transferTransactions = append(transferTransactions, transferTransaction)
+// 			}
+// 		}
+// 	}
 
-	transactionPublicData := TransactionPublicData{
-        Transactions: transferTransactions,
-    }
-    return transactionPublicData
-}
+// 	transactionPublicData := TransactionPublicData{
+// 		Transactions: transferTransactions,
+// 	}
+// 	return transactionPublicData
+// }
 
-func GetDeltaBalances(transactions []Transaction, block_number int64) (map[string]map[string]string, uint, map[string]bool, error) {
+func GetDeltaBalances(transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, error) {
 	users_updated_map := make(map[string]bool)
 	settlement_type := uint(0)
 	user_nonce_tracker := make(map[string]uint64)
@@ -65,9 +65,9 @@ func GetDeltaBalances(transactions []Transaction, block_number int64) (map[strin
 			continue
 		}
 		if transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
-			ds_message := DigitalSignatureMessage(transaction.From, transaction.To, transaction.Currency, transaction.Amount, uint64(transaction.Nonce), block_number)
-			if !EthVerify(ds_message, transaction.Signature, transaction.From) {
-				return delta_balances, settlement_type, users_updated_map, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, ds_message, transaction.From)
+			verified, err := VerifyData(transaction, currencies)
+			if !verified || err != nil {
+				return delta_balances, settlement_type, users_updated_map, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" {
@@ -223,8 +223,8 @@ func GetDeltaBalances(transactions []Transaction, block_number int64) (map[strin
 	return delta_balances, settlement_type, users_updated_map, nil
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, block_number int64) (map[string]map[string]string, uint, map[string]bool, error) {
-	delta_balances, settlement_type, users_updated, err := GetDeltaBalances(transactions, block_number)
+func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, error) {
+	delta_balances, settlement_type, users_updated, err := GetDeltaBalances(transactions, currencies)
 	if err != nil {
 		return state_balances, settlement_type, users_updated, err
 	}

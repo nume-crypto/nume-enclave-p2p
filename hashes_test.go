@@ -8,21 +8,6 @@ import (
 	"testing"
 )
 
-func TestDigitalSignatureMessage(t *testing.T) {
-	from := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29"
-	to := "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a"
-	currency := "0"
-	amount := "1880000000000000000"
-	nonce := 1
-	bn := 1
-	hashed_message := DigitalSignatureMessage(from, to, currency, amount, uint64(nonce), int64(bn))
-	expected_hash := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a171a0a11bc000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
-	if hashed_message != expected_hash {
-		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hashed_message)
-		return
-	}
-}
-
 func TestQueueItemHash(t *testing.T) {
 	pub_key := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
 	token := "token_id"

@@ -9,14 +9,6 @@ import (
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
-func DigitalSignatureMessage(from string, to string, currency string, amount string, nonce uint64, block_number int64) string {
-	amt, ok := new(big.Int).SetString(amount, 10)
-	if !ok {
-		return ""
-	}
-	return from[2:] + to[2:] + currency[2:] + fmt.Sprintf("%064x", amt) + fmt.Sprintf("%064x", nonce) + fmt.Sprintf("%064x", block_number)
-}
-
 func QueueItemHash(address string, currency string, amount string) ([]byte, bool) {
 	amt, ok := new(big.Int).SetString(amount, 10)
 	if !ok {

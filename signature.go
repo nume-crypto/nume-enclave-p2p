@@ -3,16 +3,23 @@ package main
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"math/big"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 func DecryptKeys(data map[string]ValidatorKeys, kms_client *kms.KMS) ([]string, []uint, []uint, error) {
@@ -98,37 +105,138 @@ func SignMessage(message string, user_keys map[string]ValidatorKeys) (string, []
 
 }
 
-func EthVerify(message string, sig string, pubkey string) bool {
-	msg_bytes, err := hex.DecodeString(message)
-	if err != nil {
-		return false
+func RecoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (string, string, common.Address, error) {
+	signature := ""
+	pubkey := ""
+	if Vb.BitLen() > 8 {
+		return signature, pubkey, common.Address{}, errors.New("invalid signature v byte")
 	}
-	hashed_msg := crypto.Keccak256(msg_bytes)
-	full_msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(hashed_msg), hashed_msg)
-	hash := solsha3.SoliditySHA3(
-		[]string{"string"},
-		[]interface{}{
-			full_msg,
-		},
-	)
-	sb, err := hex.DecodeString(sig[2:])
+	V := byte(Vb.Uint64() - 27)
+	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
+		return signature, pubkey, common.Address{}, errors.New("invalid signature")
+	}
+	// encode the signature in uncompressed format
+	r, s := R.Bytes(), S.Bytes()
+	sig := make([]byte, crypto.SignatureLength)
+	copy(sig[32-len(r):32], r)
+	copy(sig[64-len(s):64], s)
+	sig[64] = V
+	// recover the public key from the signature
+	signature = hex.EncodeToString(sig)
+	pub, err := crypto.Ecrecover(sighash[:], sig)
+	pubkey = hex.EncodeToString(pub)
 	if err != nil {
-		fmt.Println("sb err:", err)
-		return false
+		return signature, pubkey, common.Address{}, err
+	}
+	if len(pub) == 0 || pub[0] != 4 {
+		return signature, pubkey, common.Address{}, errors.New("invalid public key")
+	}
+	var addr common.Address
+	copy(addr[:], crypto.Keccak256(pub[1:])[12:])
+	return signature, pubkey, addr, nil
+}
+
+func decodeTransactionInputData(abi *abi.ABI, data []byte) (map[string]interface{}, string, error) {
+	method_data := data[:4]
+	input_data := data[4:]
+	method, err := abi.MethodById(method_data)
+	inputsMap := make(map[string]interface{})
+	if err != nil {
+		return inputsMap, "", err
+	}
+	if err := method.Inputs.UnpackIntoMap(inputsMap, input_data); err != nil {
+		return inputsMap, "", err
+	}
+	return inputsMap, method.Name, nil
+}
+
+func GetAmountAndTokenAddress(tx *types.Transaction, currencies []string) (string, string, string, error) {
+	amount := ""
+	token_address := ""
+	to := tx.To().Hex()
+	flag := false
+	for _, currency := range currencies {
+		if strings.EqualFold(currency, to) {
+			flag = true
+			break
+		}
+	}
+	if !flag {
+		return tx.Value().String(), "0x0000000000000000000000000000000000000000", tx.To().Hex(), nil
+	}
+	if tx.Data() == nil {
+		return amount, token_address, to, errors.New("invalid data")
+	}
+	abi_path := "erc20.abi"
+	path, err := filepath.Abs(abi_path)
+	if err != nil {
+		return amount, token_address, to, err
 	}
 
-	if sb[crypto.RecoveryIDOffset] == 27 || sb[crypto.RecoveryIDOffset] == 28 {
-		sb[crypto.RecoveryIDOffset] -= 27 // Transform yellow paper V from 27/28 to 0/1
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return amount, token_address, to, err
+	}
+	abi, err := abi.JSON(strings.NewReader(string(file)))
+	if err != nil {
+		return amount, token_address, to, err
+	}
+	input, method, err := decodeTransactionInputData(&abi, tx.Data())
+	if err != nil {
+		return amount, token_address, to, err
+	}
+	if method != "transfer" {
+		return amount, token_address, to, errors.New("invalid method")
+	}
+	amount = input["amount"].(*big.Int).String()
+	to = input["to"].(common.Address).Hex()
+	token_address = tx.To().Hex()
+	return amount, token_address, to, nil
+}
+
+func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
+	tx_bytes, err := hex.DecodeString(input_tx.Data[2:])
+	if err != nil {
+		return false, err
 	}
 
-	recovered, err := crypto.SigToPub(hash, sb)
+	eth_tx := new(types.Transaction)
+	if err := eth_tx.UnmarshalBinary(tx_bytes); err != nil {
+		return false, err
+	}
+	signer := types.NewLondonSigner(eth_tx.ChainId())
+	V, R, S := eth_tx.RawSignatureValues()
+
+	V = new(big.Int).Add(V, big.NewInt(27))
+	_, _, addr, err := RecoverPlain(signer.Hash(eth_tx), R, S, V, true)
 	if err != nil {
-		return false
+		return false, err
 	}
-	recovered_address := crypto.PubkeyToAddress(*recovered)
-	if strings.ToLower(recovered_address.String()) == pubkey {
-		return true
-	} else {
-		return false
+	amt, token_address, to, err := GetAmountAndTokenAddress(eth_tx, currencies)
+	if err != nil {
+		return false, err
 	}
+	gen_tx := Transaction{
+		From:     addr.Hex(),
+		To:       to,
+		Currency: token_address,
+		Amount:   amt,
+		Nonce:    uint(eth_tx.Nonce()),
+	}
+	if strings.EqualFold(input_tx.From, gen_tx.From) {
+		return false, errors.New("from not equal" + input_tx.From + " " + gen_tx.From)
+	}
+	if strings.EqualFold(input_tx.To, gen_tx.To) {
+		return false, errors.New("to not equal" + input_tx.To + " " + gen_tx.To)
+	}
+	if input_tx.Amount != gen_tx.Amount {
+		return false, errors.New("amount not equal" + input_tx.Amount + " " + gen_tx.Amount)
+	}
+	if strings.EqualFold(input_tx.Currency, gen_tx.Currency) {
+		return false, errors.New("currency not equal" + input_tx.Currency + " " + gen_tx.Currency)
+	}
+	if input_tx.Nonce != gen_tx.Nonce {
+		return false, errors.New("nonce not equal" + strconv.Itoa(int(input_tx.Nonce)) + " " + strconv.Itoa(int(gen_tx.Nonce)))
+	}
+	return true, nil
 }

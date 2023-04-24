@@ -94,15 +94,3 @@ func TestSignMessage(t *testing.T) {
 		return
 	}
 }
-
-func TestVerifyDigitalSignature(t *testing.T) {
-	message := "10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d"
-	aggregated_public_key_components := ""
-	sig := "020da5e5a5fb0ca69acbdb01554ab258199f17588e9d4aec7d79f353cdad987280"
-	verified := EthVerify(message, sig, aggregated_public_key_components)
-	if !verified {
-		t.Errorf("Expected true, got false")
-		return
-	}
-
-}

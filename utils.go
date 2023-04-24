@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/hex"
@@ -16,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
@@ -103,57 +101,57 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 	return hex.EncodeToString(balances_tree.Root), true
 }
 
-func EncryptTransactionKMSPubkey(tx *Transaction, block_number float64, public_key_hex string) (string, error) {
-	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
-	kstr2, err := hex.DecodeString(public_key_hex)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode public key: %w", err)
-	}
+// func EncryptTransactionKMSPubkey(tx *Transaction, block_number float64, public_key_hex string) (string, error) {
+// 	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
+// 	kstr2, err := hex.DecodeString(public_key_hex)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to decode public key: %w", err)
+// 	}
 
-	pk, err := pemToPubkey(kstr2)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert public key: %w", err)
-	}
+// 	pk, err := PemToPubkey(kstr2)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to convert public key: %w", err)
+// 	}
 
-	message := []byte(hashed_message)
+// 	message := []byte(hashed_message)
 
-	publicKeyEcies := ecies.ImportECDSAPublic(pk)
+// 	publicKeyEcies := ecies.ImportECDSAPublic(pk)
 
-	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to encrypt message: %w", err)
-	}
+// 	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to encrypt message: %w", err)
+// 	}
 
-	return hex.EncodeToString(encryptedMessage), nil
-}
+// 	return hex.EncodeToString(encryptedMessage), nil
+// }
 
 var (
-	oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+	OidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
 )
 
-type publicKeyInfo struct {
+type PublicKeyInfo struct {
 	Raw       asn1.RawContent
 	Algorithm pkix.AlgorithmIdentifier
 	PublicKey asn1.BitString
 }
 
-func pemToPubkey(publicKey []byte) (*ecdsa.PublicKey, error) {
-	var pub publicKeyInfo
+func PemToPubkey(publicKey []byte) (*ecdsa.PublicKey, error) {
+	var pub PublicKeyInfo
 	rest, err := asn1.Unmarshal(publicKey, &pub)
 	if err != nil || len(rest) > 0 {
 		return nil, fmt.Errorf("error unmarshaling public key: %w", err)
 	}
-	if !pub.Algorithm.Algorithm.Equal(oidPublicKeyECDSA) {
+	if !pub.Algorithm.Algorithm.Equal(OidPublicKeyECDSA) {
 		return nil, errors.New("not a ECDSA public key")
 	}
 
 	// Convert to ecdsa.PublicKey
 	pk, err := crypto.UnmarshalPubkey(pub.PublicKey.Bytes)
-	fmt.Println("reflect.TypeOf ",reflect.TypeOf(pk.Curve))
+	fmt.Println("reflect.TypeOf ", reflect.TypeOf(pk.Curve))
 
 	publicKeyBytes := elliptic.Marshal(pk.Curve, pk.X, pk.Y)
-    publicKeyHex := hex.EncodeToString(publicKeyBytes)
-    fmt.Printf("ECDSA public key: %s\n", publicKeyHex)
+	publicKeyHex := hex.EncodeToString(publicKeyBytes)
+	fmt.Printf("ECDSA public key: %s\n", publicKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secp256k1 curve point: %w", err)
 	}
@@ -170,24 +168,24 @@ func ToECDSAPub(pub []byte) *ecdsa.PublicKey {
 	return &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
 }
 
-func EncryptTransactionECDSAPubKey(tx *Transaction, block_number float64, ecdsaPublicKeyHex string) (string, error) {
-	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
-	// ecdsaPublicKeyHex = "040fc7ea6980106e7e7e303f27b70773182ae0c1e2681e0170d2f0d1704adeab1d031ad29c18d7a1292e20c6d29439c65b54833f4897780bdc6c43864289d8d134"
-    // decode the hex string into a byte array
-    publicKeyBytes, _ := hex.DecodeString(ecdsaPublicKeyHex)
+// func EncryptTransactionECDSAPubKey(tx *Transaction, block_number float64, ecdsaPublicKeyHex string) (string, error) {
+// 	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
+// 	// ecdsaPublicKeyHex = "040fc7ea6980106e7e7e303f27b70773182ae0c1e2681e0170d2f0d1704adeab1d031ad29c18d7a1292e20c6d29439c65b54833f4897780bdc6c43864289d8d134"
+// 	// decode the hex string into a byte array
+// 	publicKeyBytes, _ := hex.DecodeString(ecdsaPublicKeyHex)
 
-	publicKey:=ToECDSAPub(publicKeyBytes)
+// 	publicKey := ToECDSAPub(publicKeyBytes)
 
-    message := []byte(hashed_message)
+// 	message := []byte(hashed_message)
 
-	publicKeyEcies := ecies.ImportECDSAPublic(publicKey)
-	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
-    if err != nil {
-        panic(err)
-    }
-	fmt.Println("encryptedMessage")
-	str:=hex.EncodeToString(encryptedMessage)
-	fmt.Println(str)
-	
-	return hex.EncodeToString(encryptedMessage), nil
-}
+// 	publicKeyEcies := ecies.ImportECDSAPublic(publicKey)
+// 	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println("encryptedMessage")
+// 	str := hex.EncodeToString(encryptedMessage)
+// 	fmt.Println(str)
+
+// 	return hex.EncodeToString(encryptedMessage), nil
+// }

@@ -95,10 +95,12 @@ func main() {
 	}
 	wg.Wait()
 	tree := NewMerkleTree(prev_val_hash)
-
+	currencies := []string{}
+	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
+		currencies = append(currencies, c.(string))
+	}
 	init_state_balances := input_data.OldUserBalances
-	block_number := input_data.MetaData["block_number"].(float64)
-	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, int64(block_number))
+	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -133,7 +135,7 @@ func main() {
 		leaf := tree.Nodes[0][i].Data
 		leafMap[i] = hex.EncodeToString(leaf)
 	}
-	
+
 	// Convert the `leafMap` map to a JSON string.
 	leafData, err := json.Marshal(leafMap)
 	if err != nil {
@@ -142,10 +144,11 @@ func main() {
 	// Upload Merkle leafData to S3
 	md5_leaf_data := md5.Sum(bytes.TrimRight(leafData, "\n"))
 	md5_leaf_data_str := hex.EncodeToString(md5_leaf_data[:])
+	fmt.Println("md5_leaf_data_str", md5_leaf_data_str)
 
 	// Upload Public Transaction Data to S3
-	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
-	_ = public_transaction_data
+	// public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
+	// _ = public_transaction_data
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
