@@ -49,7 +49,7 @@ type TransactionPublicData struct {
 // 	return transactionPublicData
 // }
 
-func GetDeltaBalances(transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, error) {
+func GetDeltaBalances(transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, map[string]uint64, error) {
 	users_updated_map := make(map[string]bool)
 	settlement_type := uint(0)
 	user_nonce_tracker := make(map[string]uint64)
@@ -67,11 +67,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 		if transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
 			verified, err := VerifyData(transaction, currencies)
 			if !verified || err != nil {
-				return delta_balances, settlement_type, users_updated_map, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
+				return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" {
-			return delta_balances, settlement_type, users_updated_map, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+			return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
 		switch transaction.Type {
@@ -82,11 +82,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
 					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
@@ -102,11 +102,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				if _, ok := delta_balances[transaction.To][transaction.Currency]; ok {
 					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.To][transaction.Currency], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
@@ -125,11 +125,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				if _, ok := delta_balances[transaction.To][transaction.Currency]; ok {
 					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.To][transaction.Currency], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
@@ -148,11 +148,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
 					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
@@ -171,11 +171,11 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
 					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, fmt.Errorf("error converting amount to big int")
+						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
@@ -220,13 +220,13 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 		settlement_type = 7
 	}
 
-	return delta_balances, settlement_type, users_updated_map, nil
+	return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, nil
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, error) {
-	delta_balances, settlement_type, users_updated, err := GetDeltaBalances(transactions, currencies)
+func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, map[string]uint64, error) {
+	delta_balances, settlement_type, users_updated, user_nonce_tracker, err := GetDeltaBalances(transactions, currencies)
 	if err != nil {
-		return state_balances, settlement_type, users_updated, err
+		return state_balances, settlement_type, users_updated, user_nonce_tracker, err
 	}
 	for user, balances := range delta_balances {
 		if _, ok := state_balances[user]; ok {
@@ -234,12 +234,12 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				if _, ok := state_balances[user][currency]; ok {
 					amount, ok := new(big.Int).SetString(balance, 10)
 					if !ok {
-						return state_balances, settlement_type, users_updated, fmt.Errorf("error converting amount to big int")
+						return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(state_balances[user][currency], 10)
 
 					if !ok {
-						return state_balances, settlement_type, users_updated, fmt.Errorf("error converting amount to big int")
+						return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
@@ -259,13 +259,13 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		for currency, balance := range balances {
 			amount, ok := new(big.Int).SetString(balance, 10)
 			if !ok {
-				return state_balances, settlement_type, users_updated, fmt.Errorf("error converting amount to big int")
+				return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 			}
 			if amount.Cmp(big.NewInt(0)) < 0 {
-				return state_balances, settlement_type, users_updated, fmt.Errorf("balance for user %s and currency %s is less than 0, %s", user, currency, amount)
+				return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("balance for user %s and currency %s is less than 0, %s", user, currency, amount)
 			}
 		}
 	}
 
-	return state_balances, settlement_type, users_updated, nil
+	return state_balances, settlement_type, users_updated, user_nonce_tracker, nil
 }

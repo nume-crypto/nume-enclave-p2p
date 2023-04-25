@@ -69,7 +69,7 @@ func main() {
 		empty_balances_data[i] = zero_hash
 	}
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
-
+	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
@@ -79,7 +79,11 @@ func main() {
 				fmt.Println("error in getting balances root")
 				return
 			}
-			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root)
+			nonce := uint(0)
+			if old_user_nonce[u.(string)] != nil {
+				nonce = uint(old_user_nonce[u.(string)].(float64))
+			}
+			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce)
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i, u)
@@ -88,7 +92,7 @@ func main() {
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
-			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root))
+			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0)
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i)
@@ -100,7 +104,7 @@ func main() {
 		currencies = append(currencies, c.(string))
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
+	new_balances, settlement_type, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -121,7 +125,7 @@ func main() {
 			fmt.Println("error in getting balances root")
 			return
 		}
-		leaf := GetLeafHash(u.(string), "0x"+balances_root)
+		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]))
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
@@ -183,7 +187,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {

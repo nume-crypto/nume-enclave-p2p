@@ -223,20 +223,20 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 		Amount:   amt,
 		Nonce:    uint(eth_tx.Nonce()),
 	}
-	if strings.EqualFold(input_tx.From, gen_tx.From) {
-		return false, errors.New("from not equal" + input_tx.From + " " + gen_tx.From)
+	if !strings.EqualFold(input_tx.From, gen_tx.From) {
+		return false, errors.New("from not equal " + input_tx.From + " " + gen_tx.From)
 	}
-	if strings.EqualFold(input_tx.To, gen_tx.To) {
-		return false, errors.New("to not equal" + input_tx.To + " " + gen_tx.To)
+	if !strings.EqualFold(input_tx.To, gen_tx.To) {
+		return false, errors.New("to not equal " + input_tx.To + " " + gen_tx.To)
 	}
 	if input_tx.Amount != gen_tx.Amount {
-		return false, errors.New("amount not equal" + input_tx.Amount + " " + gen_tx.Amount)
+		return false, errors.New("amount not equal " + input_tx.Amount + " " + gen_tx.Amount)
 	}
-	if strings.EqualFold(input_tx.Currency, gen_tx.Currency) {
-		return false, errors.New("currency not equal" + input_tx.Currency + " " + gen_tx.Currency)
+	if !strings.EqualFold(input_tx.Currency, gen_tx.Currency) {
+		return false, errors.New("currency not equal " + input_tx.Currency + " " + gen_tx.Currency)
 	}
 	if input_tx.Nonce != gen_tx.Nonce {
-		return false, errors.New("nonce not equal" + strconv.Itoa(int(input_tx.Nonce)) + " " + strconv.Itoa(int(gen_tx.Nonce)))
+		return false, errors.New("nonce not equal " + strconv.Itoa(int(input_tx.Nonce)) + " " + strconv.Itoa(int(gen_tx.Nonce)))
 	}
 	return true, nil
 }
