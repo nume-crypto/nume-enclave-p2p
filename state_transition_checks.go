@@ -70,7 +70,7 @@ func GetDeltaBalances(transactions []Transaction, currencies []string) (map[stri
 				return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
-		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" {
+		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
 			return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)

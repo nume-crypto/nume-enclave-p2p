@@ -6,7 +6,7 @@ Enclave code for p2p protocol
 
 ```sh
 go test . -coverprofile coverage_temp.out -v
-cat coverage_temp.out | grep -v "mimc.go\|merkle.go\|utils.go\|main.go" > coverage.out  
+cat coverage_temp.out | grep -v "merkle.go\|utils.go\|main.go" > coverage.out
 go tool cover -html=coverage.out
 ```
 

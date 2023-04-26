@@ -68,26 +68,29 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer new_balances_file.Close()
 
-	validator_keys := make(map[string]ValidatorKeys)
-	validator_keys_file, err := os.Open("test_data/validators.json")
+	meta_data := make(map[string]interface{})
+	meta_data_file, err := os.Open("test_data/meta_data.json")
 	if err != nil {
-		t.Errorf("Error opening test_data/validators.json")
+		t.Errorf("Error opening test_data/meta_data.json")
 		return
 	}
-	err = json.NewDecoder(validator_keys_file).Decode(&validator_keys)
+	err = json.NewDecoder(meta_data_file).Decode(&meta_data)
 	if err != nil {
-		t.Errorf("Error decoding json from test_data/validators.json")
+		t.Errorf("Error decoding json from test_data/meta_data.json")
 		return
 	}
-	defer new_balances_file.Close()
+	defer meta_data_file.Close()
 	currencies := []string{}
+	for _, currency := range meta_data["currencies"].([]interface{}) {
+		currencies = append(currencies, currency.(string))
+	}
 	new_balances, settlement_type, _, _, err := TransitionState(prev_balances, transactions, currencies)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return
 	}
 	if settlement_type != 7 {
-		t.Errorf("settlement_type = %d, want %d", settlement_type, 7)
+		t.Errorf("settlement_type = %d, want %d", settlement_type, 4)
 		return
 	}
 
