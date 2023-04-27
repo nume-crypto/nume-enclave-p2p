@@ -40,6 +40,8 @@ type SettlementRequest struct {
 	ContractWithdrawalQueueIndex  int               `json:"contractWithdrawalQueueIndex"`
 	Message                       string            `json:"message" binding:"required"` // message
 	UsersUpdated                  map[string]string `json:"usersUpdated" binding:"required"`
+	EncryptedTxMD5Hash            string    		`json:"encryptedTxMD5Hash" binding:"required"`
+	TreeLeafMD5Hash               string    		`json:"treeLeafmd5Hash" binding:"required"`
 	SignatureRecordedAt           time.Time         `json:"signatureRecordedAt" binding:"required"`
 	SettlementStartedAt           time.Time         `json:"settlementStartedAt" binding:"required"`
 }
@@ -56,7 +58,7 @@ func main() {
 	}
 	defer con.Close()
 
-	input_data, md5_sum_str, err := GetDataOverSocket(con)
+	input_data, err := GetDataOverSocket(con)
 	if err != nil {
 		fmt.Println("read err", err)
 	}
@@ -170,6 +172,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	md5_encrypted_tx_data := md5.Sum(bytes.TrimRight(publicTxDataBytes, "\n"))
+	md5_encrypted_tx_data_str := hex.EncodeToString(md5_encrypted_tx_data[:])
 	con.Write([]byte("S3_UPLOAD" + string(publicTxDataBytes) + "\n"))
 	public_transaction_data_response, _ := bufio.NewReader(con).ReadBytes('\n')
 	if err != nil {
@@ -179,7 +183,7 @@ func main() {
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
-	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
+	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_encrypted_tx_data_str, bn)
 
 	message := ""
 	var queue_hash []byte
@@ -199,7 +203,7 @@ func main() {
 	var cw_queue_len int
 	var ok bool
 
-	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
+	md5_encrypted_tx_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	md5_leaf_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	fmt.Println("settlement_type", settlement_type)
 	// process ID 0: only L2 transactions (+4)
@@ -210,7 +214,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str)+ fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_encrypted_tx_data_str)+ fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -277,6 +281,8 @@ func main() {
 		ContractWithdrawalAmounts:     cw_amounts,
 		ContractWithdrawalTokens:      cw_token_ids,
 		UsersUpdated:                  users_updated,
+		EncryptedTxMD5Hash: 		   fmt.Sprintf("%064s", md5_encrypted_tx_data_str),
+		TreeLeafMD5Hash: 			   fmt.Sprintf("%064s", md5_leaf_data_str),
 	}
 	PrettyPrint(response)
 
