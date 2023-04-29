@@ -150,9 +150,9 @@ func main() {
 	md5_leaf_data_str := hex.EncodeToString(md5_leaf_data[:])
 	fmt.Println("md5_leaf_data_str", md5_leaf_data_str)
 
-	// Upload Public Transaction Data to S3
-	// public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
-	// _ = public_transaction_data
+	//Upload Public Transaction Data to S3
+	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
+	_ = public_transaction_data
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)

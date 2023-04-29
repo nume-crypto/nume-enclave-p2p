@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
+	"golang.org/x/crypto/nacl/box"
 )
 
 func PrettyPrint(v interface{}) (err error) {
@@ -170,24 +173,41 @@ func ToECDSAPub(pub []byte) *ecdsa.PublicKey {
 	return &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
 }
 
-// func EncryptTransactionECDSAPubKey(tx *Transaction, block_number float64, ecdsaPublicKeyHex string) (string, error) {
-// 	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
-// 	// ecdsaPublicKeyHex = "040fc7ea6980106e7e7e303f27b70773182ae0c1e2681e0170d2f0d1704adeab1d031ad29c18d7a1292e20c6d29439c65b54833f4897780bdc6c43864289d8d134"
-// 	// decode the hex string into a byte array
-// 	publicKeyBytes, _ := hex.DecodeString(ecdsaPublicKeyHex)
+func EncryptTransactionWithPubKey(tx *Transaction, block_number float64, publicKey string) (string, error) {
+	msgParamsBytes, err := json.Marshal(tx)
+    if err != nil {
+		return "", err
+    }
+	pubKeyBytes, err := base64.StdEncoding.DecodeString(publicKey)
+	if err != nil {
+		return "", err
+	}
+	var peersPublicKey [32]byte
+	copy(peersPublicKey[:], pubKeyBytes)
+	// generate ephemeral keypair
+	ephemeralKeyPub, ephemeralKeyPriv , err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	nonce := new([24]byte)
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", err
+	}
+	encryptedMessage := make([]byte, len(string(msgParamsBytes))+box.Overhead)
+	// encrypt
+	box.Seal(encryptedMessage[:0], msgParamsBytes, nonce, &peersPublicKey, ephemeralKeyPriv)
+	output := map[string]interface{}{
+		"version":        "x25519-xsalsa20-poly1305",
+		"nonce":          base64.StdEncoding.EncodeToString(nonce[:]),
+		"ephemPublicKey": base64.StdEncoding.EncodeToString(ephemeralKeyPub[:]),
+		"ciphertext":     base64.StdEncoding.EncodeToString(encryptedMessage),
+	}
+	result, err := json.Marshal(output)
+	if err != nil {
+		panic(err)
+	}
+	encrypted_transaction := "0x"+hex.EncodeToString(result)
+	fmt.Println("Encrypted Hex Result ", encrypted_transaction)
 
-// 	publicKey := ToECDSAPub(publicKeyBytes)
-
-// 	message := []byte(hashed_message)
-
-// 	publicKeyEcies := ecies.ImportECDSAPublic(publicKey)
-// 	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println("encryptedMessage")
-// 	str := hex.EncodeToString(encryptedMessage)
-// 	fmt.Println(str)
-
-// 	return hex.EncodeToString(encryptedMessage), nil
-// }
+	return encrypted_transaction, nil
+}

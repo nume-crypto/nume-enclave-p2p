@@ -18,36 +18,36 @@ type TransactionPublicData struct {
 	Transactions []TransferTransaction `json:"transactions"`
 }
 
-// func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
-// 	var transferTransactions []TransferTransaction
-// 	for _, transaction := range transactions {
-// 		switch transaction.Type {
-// 		case "transfer":
-// 			if address_pubkey_map[transaction.From] != "" && address_pubkey_map[transaction.To] != "" {
-// 				encryptedTxSender, err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.From])
-// 				if err != nil {
-// 					fmt.Println("unable to encrypt message for ", transaction.From)
-// 					continue
-// 				}
-// 				encryptedTxReceiver, err := EncryptTransactionECDSAPubKey(&transaction, block_number, address_pubkey_map[transaction.To])
-// 				if err != nil {
-// 					fmt.Println("unable to encrypt message for ", transaction.To)
-// 					continue
-// 				}
-// 				transferTransaction := TransferTransaction{
-// 					ID:                transaction.Id,
-// 					EncryptionOutputs: []string{encryptedTxSender, encryptedTxReceiver},
-// 				}
-// 				transferTransactions = append(transferTransactions, transferTransaction)
-// 			}
-// 		}
-// 	}
+func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
+    var transferTransactions []TransferTransaction
+ 	for _, transaction := range transactions {
+ 		switch transaction.Type {
+ 		case "transfer":
+ 			if address_pubkey_map[transaction.From] != "" && address_pubkey_map[transaction.To] != "" {
+ 				encryptedTxSender, err := EncryptTransactionWithPubKey(&transaction, block_number, address_pubkey_map[transaction.From])
+ 				if err != nil {
+ 					fmt.Println("unable to encrypt message for ", transaction.From)
+ 					continue
+ 				}
+ 				encryptedTxReceiver, err := EncryptTransactionWithPubKey(&transaction, block_number, address_pubkey_map[transaction.To])
+ 				if err != nil {
+ 					fmt.Println("unable to encrypt message for ", transaction.To)
+ 					continue
+ 				}
+ 				transferTransaction := TransferTransaction {
+ 					ID:                transaction.Id,
+ 					EncryptionOutputs: []string{encryptedTxSender, encryptedTxReceiver},
+ 				}
+ 				transferTransactions = append(transferTransactions, transferTransaction)
+ 			}
+ 		}
+ 	}
 
-// 	transactionPublicData := TransactionPublicData{
-// 		Transactions: transferTransactions,
-// 	}
-// 	return transactionPublicData
-// }
+ 	transactionPublicData := TransactionPublicData{
+ 		Transactions: transferTransactions,
+ 	}
+ 	return transactionPublicData
+}
 
 func GetDeltaBalances(transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, map[string]uint64, error) {
 	users_updated_map := make(map[string]bool)
