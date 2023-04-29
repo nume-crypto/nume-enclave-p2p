@@ -22,6 +22,7 @@ type Transaction struct {
 	Currency  string
 	Type      string
 	Signature string
+	Data      string
 	IsInvalid bool
 	CreatedAt time.Time
 }
@@ -35,14 +36,14 @@ type ValidatorKeys struct {
 }
 
 type InputData struct {
-	MetaData         map[string]interface{}
-	NewUserBalances  map[string]map[string]string
-	OldUserBalances  map[string]map[string]string
-	UserBalanceOrder map[string][]string
-	Transactions     []Transaction
-	ValidatorKeys    map[string]ValidatorKeys
+	MetaData             map[string]interface{}
+	NewUserBalances      map[string]map[string]string
+	OldUserBalances      map[string]map[string]string
+	UserBalanceOrder     map[string][]string
+	Transactions         []Transaction
+	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
-	KmsPayload       KmsPayload
+	KmsPayload           KmsPayload
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -112,7 +113,6 @@ func GetData(path string) (InputData, string, error) {
 	return input_data, md5_sum_str, nil
 }
 
-
 func GetDataOverSocket(con *vsock.Conn) (InputData, error) {
 	//path := "./temp_data"
 	var input_data InputData
@@ -152,7 +152,7 @@ func GetDataOverSocket(con *vsock.Conn) (InputData, error) {
 	if err != nil {
 		return input_data, err
 	}
-	
+
 	fmt.Println("Sending to Server: meta_data.json")
 	con.Write([]byte("meta_data.json" + "\n"))
 	//plan, err = os.ReadFile(path + "/meta_data.json")

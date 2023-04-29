@@ -40,8 +40,8 @@ type SettlementRequest struct {
 	ContractWithdrawalQueueIndex  int               `json:"contractWithdrawalQueueIndex"`
 	Message                       string            `json:"message" binding:"required"` // message
 	UsersUpdated                  map[string]string `json:"usersUpdated" binding:"required"`
-	EncryptedTxMD5Hash            string    		`json:"encryptedTxMD5Hash" binding:"required"`
-	TreeLeafMD5Hash               string    		`json:"treeLeafmd5Hash" binding:"required"`
+	EncryptedTxMD5Hash            string            `json:"encryptedTxMD5Hash" binding:"required"`
+	TreeLeafMD5Hash               string            `json:"treeLeafmd5Hash" binding:"required"`
 	SignatureRecordedAt           time.Time         `json:"signatureRecordedAt" binding:"required"`
 	SettlementStartedAt           time.Time         `json:"settlementStartedAt" binding:"required"`
 }
@@ -86,7 +86,7 @@ func main() {
 		empty_balances_data[i] = zero_hash
 	}
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
-
+	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
@@ -96,7 +96,11 @@ func main() {
 				fmt.Println("error in getting balances root")
 				return
 			}
-			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root)
+			nonce := uint(0)
+			if old_user_nonce[u.(string)] != nil {
+				nonce = uint(old_user_nonce[u.(string)].(float64))
+			}
+			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce)
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i, u)
@@ -105,17 +109,19 @@ func main() {
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
-			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root))
+			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0)
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 	tree := NewMerkleTree(prev_val_hash)
-
+	currencies := []string{}
+	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
+		currencies = append(currencies, c.(string))
+	}
 	init_state_balances := input_data.OldUserBalances
-	block_number := input_data.MetaData["block_number"].(float64)
-	new_balances, settlement_type, users_updated_map, err := TransitionState(init_state_balances, input_data.Transactions, int64(block_number))
+	new_balances, settlement_type, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -136,7 +142,7 @@ func main() {
 			fmt.Println("error in getting balances root")
 			return
 		}
-		leaf := GetLeafHash(u.(string), "0x"+balances_root)
+		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]))
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
@@ -150,12 +156,13 @@ func main() {
 		leaf := tree.Nodes[0][i].Data
 		leafMap[i] = hex.EncodeToString(leaf)
 	}
-	
+
 	// Convert the `leafMap` map to a JSON string.
 	leafData, err := json.Marshal(leafMap)
 	if err != nil {
 		panic(err)
 	}
+	// Upload Merkle leafData to S3
 	md5_leaf_data := md5.Sum(bytes.TrimRight(leafData, "\n"))
 	md5_leaf_data_str := hex.EncodeToString(md5_leaf_data[:])
 	// Upload Merkle leafData to S3
@@ -167,7 +174,7 @@ func main() {
 	fmt.Println("leaf_upload_response from server: ", string(leaf_upload_response))
 
 	// Upload Public Transaction Data to S3
-	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, block_number)
+	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
 	publicTxDataBytes, err := json.Marshal(public_transaction_data)
 	if err != nil {
 		panic(err)
@@ -214,7 +221,7 @@ func main() {
 	// process ID 5: deposit + withdrawal (contract)
 	// process ID 6: withdrawal (backend) + withdrawal (contract)
 	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_encrypted_tx_data_str)+ fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_leaf_data_str) + fmt.Sprintf("%064s", md5_encrypted_tx_data_str) + fmt.Sprintf("%064x", bn)
 	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -281,8 +288,8 @@ func main() {
 		ContractWithdrawalAmounts:     cw_amounts,
 		ContractWithdrawalTokens:      cw_token_ids,
 		UsersUpdated:                  users_updated,
-		EncryptedTxMD5Hash: 		   fmt.Sprintf("%064s", md5_encrypted_tx_data_str),
-		TreeLeafMD5Hash: 			   fmt.Sprintf("%064s", md5_leaf_data_str),
+		EncryptedTxMD5Hash:            fmt.Sprintf("%064s", md5_encrypted_tx_data_str),
+		TreeLeafMD5Hash:               fmt.Sprintf("%064s", md5_leaf_data_str),
 	}
 	PrettyPrint(response)
 
@@ -298,7 +305,6 @@ func main() {
 		fmt.Println("failure in saving response")
 	}
 	fmt.Println("Message from server: ", string(apiresponse))
-
 
 	con.Write([]byte("STOP" + "\n"))
 	fmt.Println("EXITING : Sending to Server: STOP")

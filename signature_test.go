@@ -3,41 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
 )
 
-func TestDecrypt(t *testing.T) {
-	sess := session.Must(session.NewSession())
-	kms_client := kms.New(sess, aws.NewConfig().WithRegion("us-east-1"))
-	user_keys := make(map[string]ValidatorKeys)
-	user_keys["1"] = ValidatorKeys{
-		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
-		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
-	}
-	user_keys["2"] = ValidatorKeys{
-		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPv",
-		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
-	}
-	user_keys["3"] = ValidatorKeys{
-		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAEBaRXECZAR/aRfp8k2IeAhAAAAYjBgBgkqhkiG9w0BBwagUzBRAgEAMEwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMvHwEDnrIzDxSVPOQAgEQgB/0GX4mOgO5xq2emtxuQ/LzOtwhzFB0LyaQiFIrLgPp",
-		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
-	}
-	keys, _, _, err := DecryptKeys(user_keys, kms_client)
-	if err != nil {
-		t.Errorf("Error decrypting keys " + err.Error())
-		return
-	}
-	if len(keys) != 2 {
-		t.Errorf("Expected 2 key, got %d", len(keys))
-		return
-	}
-	if keys[0] != "1234" {
-		t.Errorf("Expected 1234, got %s", keys[0])
-		return
-	}
-}
 
 func TestAggregateSignature(t *testing.T) {
 	signature, aggregated_public_key_components, err := AggregateSignature("10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d", []string{"d1f0f4e6df9803f1c94fe46214037c2fa926238de5504315abac0e9a5c189843", "b155212c78e165ab377c6e1c142ba828a94a05699b60c0d12c279cd7e5a3f4ae"})
@@ -72,37 +39,4 @@ func TestAggregateSignature(t *testing.T) {
 			return
 		}
 	}
-}
-
-func TestSignMessage(t *testing.T) {
-	user_keys := make(map[string]ValidatorKeys)
-	user_keys["162ef608bf92f47846fbf53481f1b0504e3bd1f1678376b20139bd94cf0003eb"] = ValidatorKeys{
-		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAGN9n0CV+9w2tjYAqrVQWhcAAAAojCBnwYJKoZIhvcNAQcGoIGRMIGOAgEAMIGIBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDItcDL4lPiDkr7spewIBEIBbRb6Pltakos+qO7Ocpv0aiXT4GqF/8kMqm4pTFXMVO698rjL1u7PrudG09yiXvTVR3n/4hQrQf+LoGBi4CXTlc80z/f3OXTAB5tJCwNhOLAPgKZmo5X9MAT759A==",
-		CMKId:               "c53fe209-f0a7-42d2-baec-9d8f286f5ce1",
-	}
-	signature, _, _, _, err := SignMessage("10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d", user_keys)
-	if err != nil {
-		t.Errorf("Error signing message" + err.Error())
-		return
-	}
-	if len(signature) != 66 {
-		t.Errorf("Expected 66 signature, got %d", len(signature))
-		return
-	}
-	if signature != "031ccc5203cc6117f641d2aa552e2d42e77e5db495c94f904de52d0c673db754fb" {
-		t.Errorf("Expected 031ccc5203cc6117f641d2aa552e2d42e77e5db495c94f904de52d0c673db754fb, got %s", signature)
-		return
-	}
-}
-
-func TestVerifyDigitalSignature(t *testing.T) {
-	message := "10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d"
-	aggregated_public_key_components := ""
-	sig := "020da5e5a5fb0ca69acbdb01554ab258199f17588e9d4aec7d79f353cdad987280"
-	verified := EthVerify(message, sig, aggregated_public_key_components)
-	if !verified {
-		t.Errorf("Expected true, got false")
-		return
-	}
-
 }

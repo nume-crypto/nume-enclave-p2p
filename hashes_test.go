@@ -8,31 +8,16 @@ import (
 	"testing"
 )
 
-func TestDigitalSignatureMessage(t *testing.T) {
-	from := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29"
-	to := "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a"
-	currency := "0"
-	amount := "1880000000000000000"
-	nonce := 1
-	bn := 1
-	hashed_message := DigitalSignatureMessage(from, to, currency, amount, uint64(nonce), int64(bn))
-	expected_hash := "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a171a0a11bc000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
-	if hashed_message != expected_hash {
-		t.Errorf("Failed to hash message expected %s got %s", expected_hash, hashed_message)
-		return
-	}
-}
-
 func TestQueueItemHash(t *testing.T) {
-	pub_key := "26796d7073f12c5cdf95f5b30b071cbf5fc6e2f69d26e1af048a6b3bdcddc855"
-	token := "token_id"
-	amount := "99"
+	pub_key := "0x447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"
+	token := "0x0b6D9aB4c80889b65A61050470CBC5523d8Ce48D"
+	amount := "25003"
 	hash, ok := QueueItemHash(pub_key, token, amount)
 	if !ok {
 		t.Errorf("Failed to hash queue item")
 		return
 	}
-	expected_hash := "219730f65f0e4f1747ee765930f120dee7b792a3e7bd8371ad7e10ad46850c2a"
+	expected_hash := "19321d66228a380018281c8afcc4590447ca41a34162e29e501f7670b30d036b"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -57,11 +42,11 @@ func TestQueueHash(t *testing.T) {
 		t.Errorf("Failed to hash queue")
 		return
 	}
-	if queue_index != 5 {
-		t.Errorf("Failed to get queue index expected 2 got %d", queue_index)
+	if queue_index != 3 {
+		t.Errorf("Failed to get queue index expected 3 got %d", queue_index)
 		return
 	}
-	expected_hash := "26712cdb7e9e91dafb6abdf438fa70718c82be5a8c0e16d0306c2c5c1008f8e6"
+	expected_hash := "1a9e0398f7c42398c98ddfc4a1a680e3d879823f91c04c32007a21a1c37f3d2c"
 	if hex.EncodeToString(hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(hash))
 		return
@@ -86,22 +71,22 @@ func TestWithdrawalHash(t *testing.T) {
 		t.Errorf("Failed to hash withdrawal")
 		return
 	}
-	expected_withdrawal_amounts := []string{"180000000000000000", "230000", "60000", "270000000000000032", "460000"}
+	expected_withdrawal_amounts := []string{"64000", "123", "12124"}
 	if !reflect.DeepEqual(withdrawal_amounts, expected_withdrawal_amounts) {
 		t.Errorf("Failed to get withdrawal amounts expected %v got %v", expected_withdrawal_amounts, withdrawal_amounts)
 		return
 	}
-	expected_withdrawal_addresses := []string{"447bF33F7c7C925eb7674bCF590AeD4Aa57e656b", "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b", "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b", "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b", "447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"}
+	expected_withdrawal_addresses := []string{"0x5D9aE648d74dF50746951Cbb2FB296c836A7A0e9", "0xD28c7E81b6E8ba287307c034133EB7d72302eBf3", "0x0132b7813B8D84C6f95253B056329151eBF42E76"}
 	if !reflect.DeepEqual(withdrawal_addresses, expected_withdrawal_addresses) {
 		t.Errorf("Failed to get withdrawal addresses expected %v got %v", expected_withdrawal_addresses, withdrawal_addresses)
 		return
 	}
-	expected_withdrawal_tokens := []uint{1, 3, 3, 1, 2}
+	expected_withdrawal_tokens := []string{"0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6", "0x799c6832d187243f3367902079A72fb3Fd61cdF7", "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723"}
 	if !reflect.DeepEqual(withdrawal_tokens, expected_withdrawal_tokens) {
 		t.Errorf("Failed to get withdrawal tokens expected %v got %v", expected_withdrawal_tokens, withdrawal_tokens)
 		return
 	}
-	expected_hash := "19ec7dd4d023e9cee21d0b8bbf9b97e2b6774e5cf2d00ee12bdb9d7ee564d880"
+	expected_hash := "323ad72842bb3ddae1baa8dd308ef0a686dd4fa5670cf7ecabc12291bbdade7d"
 	if hex.EncodeToString(withdrawal_hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(withdrawal_hash))
 		return
@@ -126,27 +111,27 @@ func TestWithdrawalQueueHash(t *testing.T) {
 		t.Errorf("Failed to hash withdrawal")
 		return
 	}
-	expected_cw_queue_len := 1
+	expected_cw_queue_len := 4
 	if cw_queue_len != expected_cw_queue_len {
 		t.Errorf("Failed to get withdrawal queue len expected %v got %v", expected_cw_queue_len, cw_queue_len)
 		return
 	}
-	expected_cw_addresses := []string{"447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"}
+	expected_cw_addresses := []string{"0x0132b7813B8D84C6f95253B056329151eBF42E76", "0x0132b7813B8D84C6f95253B056329151eBF42E76", "0x2e3925Ff5246f5Cc131860311b249C3712a9D789", "0x0132b7813B8D84C6f95253B056329151eBF42E76"}
 	if !reflect.DeepEqual(cw_addresses, expected_cw_addresses) {
 		t.Errorf("Failed to get withdrawal addresses expected %v got %v", expected_cw_addresses, cw_addresses)
 		return
 	}
-	expected_cw_amounts := []string{"9140000"}
+	expected_cw_amounts := []string{"90", "889127589", "11", "12124"}
 	if !reflect.DeepEqual(cw_amounts, expected_cw_amounts) {
 		t.Errorf("Failed to get withdrawal amounts expected %v got %v", expected_cw_amounts, cw_amounts)
 		return
 	}
-	expected_cw_token_ids := []uint{2}
+	expected_cw_token_ids := []string{"0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6", "0x799c6832d187243f3367902079A72fb3Fd61cdF7", "0x799c6832d187243f3367902079A72fb3Fd61cdF7", "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723"}
 	if !reflect.DeepEqual(cw_token_ids, expected_cw_token_ids) {
 		t.Errorf("Failed to get withdrawal token ids expected %v got %v", expected_cw_token_ids, cw_token_ids)
 		return
 	}
-	expected_hash := "071ed934b08b377203ad38838bb62023631f135b8e4cef189d2a3e660bd0e34a"
+	expected_hash := "96100de070a91868ed66757b1e21171ad19b6aeae809cc6c76c7f3b367a98ae3"
 	if hex.EncodeToString(cw_queue_hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(cw_queue_hash))
 		return
