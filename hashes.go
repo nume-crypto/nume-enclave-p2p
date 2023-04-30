@@ -10,28 +10,25 @@ import (
 )
 
 func QueueItemHash(address string, currency string, amount string) ([]byte, bool) {
-	amt, ok := new(big.Int).SetString(amount, 10)
-	if !ok {
-		return []byte{}, ok
-	}
 	hash := solsha3.SoliditySHA3(
 		[]string{"address", "address", "uint256"},
 		[]interface{}{
 			address,
 			currency,
-			amt,
+			amount,
 		},
 	)
 	return hash, true
 }
 
-func QueueHash(queue []Transaction) ([]byte, int, bool) {
+func QueueHash(queue []NftTransaction) ([]byte, int, bool) {
 	var queue_hash []byte
 
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
 		if queue[i].Type == "deposit" {
-			cb, ok := QueueItemHash(queue[i].To, queue[i].Currency, queue[i].Amount)
+			tk := new(big.Int).SetUint64(uint64(queue[i].NftTokenId))
+			cb, ok := QueueItemHash(queue[i].To, queue[i].NftContractAddress, tk.String())
 			if !ok {
 				return queue_hash, 0, ok
 			}
@@ -41,6 +38,7 @@ func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	types := []string{}
 	values := []interface{}{}
 	for _, item := range valid_queue {
+		fmt.Println(hex.EncodeToString(item))
 		types = append(types, "uint256")
 		values = append(values, new(big.Int).SetBytes(item))
 	}
@@ -51,46 +49,47 @@ func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	return queue_hash, len(valid_queue), true
 }
 
-func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []string, []string, bool) {
+func WithdrawalHash(withdrawal []NftTransaction) ([]byte, []uint, []bool, []string, []string, bool) {
 	var withdrawal_hash []byte
-	var withdrawal_amounts []string
+	var withdrawal_amounts []uint
+	var withdrawal_l2_minted []bool
 	var withdrawal_addresses []string
 	var withdrawal_tokens []string
 	withdrawal_str := ""
 	for i := 0; i < len(withdrawal); i++ {
-		if withdrawal[i].Type == "withdrawal" {
+		if withdrawal[i].Type == "nft_withdrawal" {
+			withdrawal_l2_minted = append(withdrawal_l2_minted, true)
 			withdrawal_str += withdrawal[i].To[2:]
-			withdrawal_str += withdrawal[i].Currency[2:]
-			amt, ok := new(big.Int).SetString(withdrawal[i].Amount, 10)
-			if !ok {
-				return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok
-			}
-			withdrawal_str += fmt.Sprintf("%064x", amt)
-			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].Amount)
+			withdrawal_str += withdrawal[i].NftContractAddress[2:]
+			withdrawal_str += fmt.Sprintf("%064x", withdrawal[i].NftTokenId)
+			withdrawal_str += fmt.Sprintf("%02x", 1)
+			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].NftTokenId)
 			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
-			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].Currency)
+			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].NftContractAddress)
 		}
 
 	}
+	fmt.Println("withdrawal_str", withdrawal_str)
 	wa, err := hex.DecodeString(withdrawal_str)
 	if err != nil {
 		fmt.Println("err", err)
 	}
 	withdrawal_hash = crypto.Keccak256(wa)
 
-	return withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, true
+	return withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, true
 }
 
-func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, []string, bool) {
+func WithdrawalQueueHash(queue []NftTransaction) ([]byte, int, []string, []uint, []string, bool) {
 	var queue_hash []byte
-	var amounts []string
+	var amounts []uint
 	var addresses []string
 	var tokens []string
 
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
 		if queue[i].Type == "contract_withdrawal" {
-			cb, ok := QueueItemHash(queue[i].To, queue[i].Currency, queue[i].Amount)
+			tk := new(big.Int).SetUint64(uint64(queue[i].NftTokenId))
+			cb, ok := QueueItemHash(queue[i].To, queue[i].NftContractAddress, tk.String())
 			if !ok {
 				return queue_hash, 0, addresses, amounts, tokens, ok
 			}
@@ -101,8 +100,8 @@ func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, 
 				valid_queue = append(valid_queue, cb)
 			}
 			addresses = append(addresses, queue[i].To)
-			amounts = append(amounts, queue[i].Amount)
-			tokens = append(tokens, queue[i].Currency)
+			amounts = append(amounts, queue[i].NftTokenId)
+			tokens = append(tokens, queue[i].NftContractAddress)
 
 		}
 	}

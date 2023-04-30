@@ -9,18 +9,18 @@ import (
 	"time"
 )
 
-type Transaction struct {
-	Id        uint
-	From      string
-	To        string
-	Amount    string
-	Nonce     uint
-	Currency  string
-	Type      string
-	Signature string
-	Data      string
-	IsInvalid bool
-	CreatedAt time.Time
+type NftTransaction struct {
+	Id                 uint
+	From               string
+	To                 string
+	NftContractAddress string
+	Nonce              uint
+	NftTokenId         uint
+	Type               string
+	Signature          string
+	IsInvalid          bool
+	Data               string
+	CreatedAt          time.Time
 }
 
 type ValidatorKeys struct {
@@ -32,13 +32,12 @@ type ValidatorKeys struct {
 }
 
 type InputData struct {
-	MetaData             map[string]interface{}
-	NewUserBalances      map[string]map[string]string
-	OldUserBalances      map[string]map[string]string
-	UserBalanceOrder     map[string][]string
-	Transactions         []Transaction
-	ValidatorKeys        map[string]ValidatorKeys
-	AddressPublicKeyData map[string]string
+	MetaData         map[string]interface{}
+	NewUserBalances  map[string]map[string]bool
+	OldUserBalances  map[string]map[string]bool
+	UserBalanceOrder map[string][]string
+	Transactions     []NftTransaction
+	ValidatorKeys    map[string]ValidatorKeys
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -93,14 +92,6 @@ func GetData(path string) (InputData, string, error) {
 		return input_data, "", err
 	}
 	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
-	if err != nil {
-		return input_data, "", err
-	}
-	plan, err = os.ReadFile(path + "/address_public_key_map.json")
-	if err != nil {
-		return input_data, "", err
-	}
-	err = json.Unmarshal(plan, &input_data.AddressPublicKeyData)
 	if err != nil {
 		return input_data, "", err
 	}

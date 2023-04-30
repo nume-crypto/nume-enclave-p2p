@@ -23,11 +23,12 @@ type SettlementRequest struct {
 	QueueHash                     string            `json:"queueHash" binding:"required"` // deposit
 	QueueIndex                    int               `json:"queueIndex"`
 	WithdrawalHash                string            `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
+	WithdrawalAmounts             []uint            `json:"withdrawalAmounts" binding:"required"`
 	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
 	WithdrawalTokens              []string          `json:"withdrawalTokes" binding:"required"`
+	WithdrawalL2Minted            []bool            `json:"withdrawalL2Minted" binding:"required"`
 	ContractWithdrawalAddresses   []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts     []string          `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalAmounts     []uint            `json:"contractWithdrawalAmounts" binding:"required"`
 	ContractWithdrawalTokens      []string          `json:"contractWithdrawalTokes" binding:"required"`
 	ContractWithdrawalQueueIndex  int               `json:"contractWithdrawalQueueIndex"`
 	Message                       string            `json:"message" binding:"required"` // message
@@ -59,10 +60,11 @@ func main() {
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
 	zero_hash := solsha3.SoliditySHA3(
-		[]string{"address", "uint256"},
+		[]string{"address", "uint256", "bytes32"},
 		[]interface{}{
 			"0x0000000000000000000000000000000000000000",
 			"0",
+			"0x0000000000000000000000000000000000000000",
 		},
 	)
 	for i := 0; i < max_num_balances; i++ {
@@ -99,12 +101,9 @@ func main() {
 	}
 	wg.Wait()
 	tree := NewMerkleTree(prev_val_hash)
-	currencies := []string{}
-	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
-		currencies = append(currencies, c.(string))
-	}
+
 	init_state_balances := input_data.OldUserBalances
-	new_balances, settlement_type, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
+	new_balances, settlement_type, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -112,6 +111,7 @@ func main() {
 	}
 	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
+		PrettyPrint(new_balances)
 		fmt.Println("new_balances and input_data.NewUserBalances are not equal")
 		return
 	}
@@ -163,14 +163,15 @@ func main() {
 	var queue_index int
 
 	var withdrawal_hash []byte
-	withdrawal_amounts := make([]string, 0)
+	withdrawal_amounts := make([]uint, 0)
 	withdrawal_addresses := make([]string, 0)
+	withdrawal_l2_minted := make([]bool, 0)
 	withdrawal_tokens := make([]string, 0)
 	var queue_len int
 
 	cw_addresses := make([]string, 0)
 	cw_token_ids := make([]string, 0)
-	cw_amounts := make([]string, 0)
+	cw_amounts := make([]uint, 0)
 	var cw_queue_hash []byte
 	var cw_queue_index int
 	var cw_queue_len int
@@ -217,7 +218,7 @@ func main() {
 		cw_queue_index = cw_queue_len + last_handled_cw_queue_index
 	}
 	if settlement_type == 2 || settlement_type == 4 || settlement_type == 6 || settlement_type == 7 {
-		withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
+		withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
 		if !ok {
 			fmt.Println("error in getting withdrawal_hash")
 			return
@@ -249,6 +250,7 @@ func main() {
 		WithdrawalAmounts:             withdrawal_amounts,
 		WithdrawalAddresses:           withdrawal_addresses,
 		WithdrawalTokens:              withdrawal_tokens,
+		WithdrawalL2Minted:            withdrawal_l2_minted,
 		ContractWithdrawalAddresses:   cw_addresses,
 		ContractWithdrawalQueueIndex:  cw_queue_index,
 		ContractWithdrawalAmounts:     cw_amounts,

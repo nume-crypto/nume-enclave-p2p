@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/big"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,7 +45,7 @@ func GetLeafHash(address string, root string, nonce uint) []byte {
 	return hash
 }
 
-func NestedMapsEqual(m1, m2 map[string]map[string]string) bool {
+func NestedMapsEqual(m1, m2 map[string]map[string]bool) bool {
 	if len(m1) != len(m2) {
 		fmt.Println("len(m1)", len(m1), "len(m2)", len(m2))
 		return false
@@ -58,7 +59,7 @@ func NestedMapsEqual(m1, m2 map[string]map[string]string) bool {
 	return reflect.DeepEqual(m1, m2)
 }
 
-func MapsEqual(m1, m2 map[string]string) bool {
+func MapsEqual(m1, m2 map[string]bool) bool {
 	if len(m1) != len(m2) {
 		return false
 	}
@@ -70,30 +71,30 @@ func MapsEqual(m1, m2 map[string]string) bool {
 	return reflect.DeepEqual(m1, m2)
 }
 
-func GetBalancesRoot(balances map[string]string, user_balance_order []string, max_num_balances int) (string, bool) {
+func GetBalancesRoot(balances map[string]bool, user_balance_order []string, max_num_balances int) (string, bool) {
 
 	balances_tree := &MerkleTree{}
 	var balances_data = make([][]byte, max_num_balances)
 	for i := 0; i < max_num_balances; i++ {
 		if i < len(balances) {
-			cb2, ok := new(big.Int).SetString(balances[user_balance_order[i]], 10)
-			if !ok {
-				return "", ok
-			}
+			nft_address := strings.Split(user_balance_order[i], "-")[0]
+			nft_token_id := strings.Split(user_balance_order[i], "-")[0]
 			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256"},
+				[]string{"address", "uint256", "bytes32"},
 				[]interface{}{
-					user_balance_order[i],
-					cb2,
+					nft_address,
+					nft_token_id,
+					"0x0000000000000000000000000000000000000000",
 				},
 			)
 			balances_data[i] = hash
 		} else {
 			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256"},
+				[]string{"address", "uint256", "bytes32"},
 				[]interface{}{
 					"0x0000000000000000000000000000000000000000",
 					"0",
+					"0x0000000000000000000000000000000000000000",
 				},
 			)
 			balances_data[i] = hash
