@@ -219,8 +219,8 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 	gen_tx := Transaction{
 		From:     addr.Hex(),
 		To:       to,
-		Currency: token_address,
-		Amount:   amt,
+		CurrencyOrNftContractAddress: token_address,
+		AmountOrNftTokenId:   amt,
 		Nonce:    uint(eth_tx.Nonce()),
 	}
 	if !strings.EqualFold(input_tx.From, gen_tx.From) {
@@ -229,14 +229,50 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 	if !strings.EqualFold(input_tx.To, gen_tx.To) {
 		return false, errors.New("to not equal " + input_tx.To + " " + gen_tx.To)
 	}
-	if input_tx.Amount != gen_tx.Amount {
-		return false, errors.New("amount not equal " + input_tx.Amount + " " + gen_tx.Amount)
+	if input_tx.AmountOrNftTokenId != gen_tx.AmountOrNftTokenId {
+		return false, errors.New("amount not equal " + input_tx.AmountOrNftTokenId + " " + gen_tx.AmountOrNftTokenId)
 	}
-	if !strings.EqualFold(input_tx.Currency, gen_tx.Currency) {
-		return false, errors.New("currency not equal " + input_tx.Currency + " " + gen_tx.Currency)
+	if !strings.EqualFold(input_tx.CurrencyOrNftContractAddress, gen_tx.CurrencyOrNftContractAddress) {
+		return false, errors.New("currency not equal " + input_tx.CurrencyOrNftContractAddress + " " + gen_tx.CurrencyOrNftContractAddress)
 	}
 	if input_tx.Nonce != gen_tx.Nonce {
 		return false, errors.New("nonce not equal " + strconv.Itoa(int(input_tx.Nonce)) + " " + strconv.Itoa(int(gen_tx.Nonce)))
 	}
 	return true, nil
+}
+
+func GetNftFromAndTo(tx *types.Transaction) (int, string, string, string, error) {
+	nft_token_id := 0
+	nft_token_address := ""
+	to := tx.To().Hex()
+	from := ""
+	if tx.Data() == nil {
+		return nft_token_id, nft_token_address, to, from, errors.New("invalid data")
+	}
+	abi_path := "erc721.abi"
+	path, err := filepath.Abs(abi_path)
+	if err != nil {
+		return nft_token_id, nft_token_address, to, from, err
+	}
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return nft_token_id, nft_token_address, to, from, err
+	}
+	abi, err := abi.JSON(strings.NewReader(string(file)))
+	if err != nil {
+		return nft_token_id, nft_token_address, to, from, err
+	}
+	input, method, err := decodeTransactionInputData(&abi, tx.Data())
+	if err != nil {
+		return nft_token_id, nft_token_address, to, from, err
+	}
+	if method != "transferFrom" {
+		return nft_token_id, nft_token_address, to, from, errors.New("invalid method")
+	}
+	nft_token_id = int(input["tokenId"].(*big.Int).Uint64())
+	to = input["to"].(common.Address).Hex()
+	nft_token_address = tx.To().Hex()
+	from = input["from"].(common.Address).Hex()
+	return nft_token_id, nft_token_address, to, from, nil
 }

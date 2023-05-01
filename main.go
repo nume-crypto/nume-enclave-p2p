@@ -26,6 +26,7 @@ type SettlementRequest struct {
 	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
 	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
 	WithdrawalTokens              []string          `json:"withdrawalTokes" binding:"required"`
+	WithdrawalL2Minted 			  []bool 			`json:"withdrawalL2Minted" binding:"required"`
 	ContractWithdrawalAddresses   []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
 	ContractWithdrawalAmounts     []string          `json:"contractWithdrawalAmounts" binding:"required"`
 	ContractWithdrawalTokens      []string          `json:"contractWithdrawalTokes" binding:"required"`
@@ -166,6 +167,7 @@ func main() {
 	withdrawal_amounts := make([]string, 0)
 	withdrawal_addresses := make([]string, 0)
 	withdrawal_tokens := make([]string, 0)
+	withdrawal_l2_minted := make([]bool, 0)
 	var queue_len int
 
 	cw_addresses := make([]string, 0)
@@ -217,7 +219,7 @@ func main() {
 		cw_queue_index = cw_queue_len + last_handled_cw_queue_index
 	}
 	if settlement_type == 2 || settlement_type == 4 || settlement_type == 6 || settlement_type == 7 {
-		withdrawal_hash, withdrawal_amounts, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
+		withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
 		if !ok {
 			fmt.Println("error in getting withdrawal_hash")
 			return
@@ -249,6 +251,7 @@ func main() {
 		WithdrawalAmounts:             withdrawal_amounts,
 		WithdrawalAddresses:           withdrawal_addresses,
 		WithdrawalTokens:              withdrawal_tokens,
+		WithdrawalL2Minted: 		   withdrawal_l2_minted,
 		ContractWithdrawalAddresses:   cw_addresses,
 		ContractWithdrawalQueueIndex:  cw_queue_index,
 		ContractWithdrawalAmounts:     cw_amounts,
