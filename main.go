@@ -26,7 +26,7 @@ type SettlementRequest struct {
 	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
 	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
 	WithdrawalTokens              []string          `json:"withdrawalTokes" binding:"required"`
-	WithdrawalL2Minted 			  []bool 			`json:"withdrawalL2Minted" binding:"required"`
+	WithdrawalL2Minted            []bool            `json:"withdrawalL2Minted" binding:"required"`
 	ContractWithdrawalAddresses   []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
 	ContractWithdrawalAmounts     []string          `json:"contractWithdrawalAmounts" binding:"required"`
 	ContractWithdrawalTokens      []string          `json:"contractWithdrawalTokes" binding:"required"`
@@ -60,8 +60,10 @@ func main() {
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
 	zero_hash := solsha3.SoliditySHA3(
-		[]string{"address", "uint256"},
+		[]string{"address", "uint256", "bytes32", "uint256"},
 		[]interface{}{
+			"0x0000000000000000000000000000000000000000",
+			"0",
 			"0x0000000000000000000000000000000000000000",
 			"0",
 		},
@@ -123,7 +125,7 @@ func main() {
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.UserBalanceOrder[u.(string)], max_num_balances)
 		if !ok {
-			fmt.Println("error in getting balances root")
+			fmt.Println("error in getting balances root new")
 			return
 		}
 		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]))
@@ -251,13 +253,13 @@ func main() {
 		WithdrawalAmounts:             withdrawal_amounts,
 		WithdrawalAddresses:           withdrawal_addresses,
 		WithdrawalTokens:              withdrawal_tokens,
-		WithdrawalL2Minted: 		   withdrawal_l2_minted,
+		WithdrawalL2Minted:            withdrawal_l2_minted,
 		ContractWithdrawalAddresses:   cw_addresses,
 		ContractWithdrawalQueueIndex:  cw_queue_index,
 		ContractWithdrawalAmounts:     cw_amounts,
 		ContractWithdrawalTokens:      cw_token_ids,
 		UsersUpdated:                  users_updated,
 	}
-	PrettyPrint(response)
+	PrettyPrint("response", response)
 
 }

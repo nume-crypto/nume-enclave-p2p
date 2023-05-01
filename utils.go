@@ -22,8 +22,9 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func PrettyPrint(v interface{}) (err error) {
+func PrettyPrint(text string, v interface{}) (err error) {
 	b, err := json.MarshalIndent(v, "", "  ")
+	fmt.Println(text)
 	if err == nil {
 		fmt.Println(string(b))
 	}
@@ -55,7 +56,8 @@ func NestedMapsEqual(m1, m2 map[string]map[string]string) bool {
 	}
 	for k, v1 := range m1 {
 		if v2, ok := m2[k]; !ok || !MapsEqual(v1, v2) {
-			fmt.Println("v1", v1, "v2", v2)
+			PrettyPrint("v1", v1)
+			PrettyPrint("v2", v2)
 			return false
 		}
 	}
@@ -75,27 +77,36 @@ func MapsEqual(m1, m2 map[string]string) bool {
 }
 
 func GetBalancesRoot(balances map[string]string, user_balance_order []string, max_num_balances int) (string, bool) {
-
 	balances_tree := &MerkleTree{}
 	var balances_data = make([][]byte, max_num_balances)
 	for i := 0; i < max_num_balances; i++ {
 		if i < len(balances) {
-			cb2, ok := new(big.Int).SetString(balances[user_balance_order[i]], 10)
+			amt_or_token_id := balances[user_balance_order[i]]
+			currency_or_contract := balances[user_balance_order[i]]
+			if len(user_balance_order[i]) > 42 {
+				amt_or_token_id = strings.Split(user_balance_order[i], "-")[1]
+				currency_or_contract = strings.Split(user_balance_order[i], "-")[0]
+			}
+			cb2, ok := new(big.Int).SetString(amt_or_token_id, 10)
 			if !ok {
 				return "", ok
 			}
 			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256"},
+				[]string{"address", "uint256", "bytes32", "uint256"},
 				[]interface{}{
-					user_balance_order[i],
+					currency_or_contract,
 					cb2,
+					"0x0000000000000000000000000000000000000000",
+					"0",
 				},
 			)
 			balances_data[i] = hash
 		} else {
 			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256"},
+				[]string{"address", "uint256", "bytes32", "uint256"},
 				[]interface{}{
+					"0x0000000000000000000000000000000000000000",
+					"0",
 					"0x0000000000000000000000000000000000000000",
 					"0",
 				},
@@ -209,9 +220,9 @@ func ToECDSAPub(pub []byte) *ecdsa.PublicKey {
 
 func EncryptTransactionWithPubKey(tx *Transaction, block_number float64, publicKey string) (string, error) {
 	msgParamsBytes, err := json.Marshal(tx)
-    if err != nil {
+	if err != nil {
 		return "", err
-    }
+	}
 	pubKeyBytes, err := base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
 		return "", err
@@ -219,7 +230,7 @@ func EncryptTransactionWithPubKey(tx *Transaction, block_number float64, publicK
 	var peersPublicKey [32]byte
 	copy(peersPublicKey[:], pubKeyBytes)
 	// generate ephemeral keypair
-	ephemeralKeyPub, ephemeralKeyPriv , err := box.GenerateKey(rand.Reader)
+	ephemeralKeyPub, ephemeralKeyPriv, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		return "", err
 	}
@@ -240,7 +251,7 @@ func EncryptTransactionWithPubKey(tx *Transaction, block_number float64, publicK
 	if err != nil {
 		panic(err)
 	}
-	encrypted_transaction := "0x"+hex.EncodeToString(result)
+	encrypted_transaction := "0x" + hex.EncodeToString(result)
 	fmt.Println("Encrypted Hex Result ", encrypted_transaction)
 
 	return encrypted_transaction, nil

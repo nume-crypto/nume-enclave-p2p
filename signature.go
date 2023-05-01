@@ -212,16 +212,27 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	amt, token_address, to, err := GetAmountAndTokenAddress(eth_tx, currencies)
-	if err != nil {
-		return false, err
+	// if transactio.tyupe contrains nft if condition
+	var amt_or_token_id, token_address_or_currency, to, from string
+	if input_tx.Type == "nft" {
+		amt_or_token_id, token_address_or_currency, to, from, err = GetNftFromAndTo(eth_tx)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		from = addr.Hex()
+		amt_or_token_id, token_address_or_currency, to, err = GetAmountAndTokenAddress(eth_tx, currencies)
+		if err != nil {
+			return false, err
+		}
 	}
+
 	gen_tx := Transaction{
-		From:     addr.Hex(),
-		To:       to,
-		CurrencyOrNftContractAddress: token_address,
-		AmountOrNftTokenId:   amt,
-		Nonce:    uint(eth_tx.Nonce()),
+		From:                         from,
+		To:                           to,
+		CurrencyOrNftContractAddress: token_address_or_currency,
+		AmountOrNftTokenId:           amt_or_token_id,
+		Nonce:                        uint(eth_tx.Nonce()),
 	}
 	if !strings.EqualFold(input_tx.From, gen_tx.From) {
 		return false, errors.New("from not equal " + input_tx.From + " " + gen_tx.From)
@@ -241,8 +252,8 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 	return true, nil
 }
 
-func GetNftFromAndTo(tx *types.Transaction) (int, string, string, string, error) {
-	nft_token_id := 0
+func GetNftFromAndTo(tx *types.Transaction) (string, string, string, string, error) {
+	nft_token_id := "0"
 	nft_token_address := ""
 	to := tx.To().Hex()
 	from := ""
@@ -270,7 +281,7 @@ func GetNftFromAndTo(tx *types.Transaction) (int, string, string, string, error)
 	if method != "transferFrom" {
 		return nft_token_id, nft_token_address, to, from, errors.New("invalid method")
 	}
-	nft_token_id = int(input["tokenId"].(*big.Int).Uint64())
+	nft_token_id = input["tokenId"].(*big.Int).String()
 	to = input["to"].(common.Address).Hex()
 	nft_token_address = tx.To().Hex()
 	from = input["from"].(common.Address).Hex()
