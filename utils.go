@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/big"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -97,6 +98,39 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 				[]interface{}{
 					"0x0000000000000000000000000000000000000000",
 					"0",
+				},
+			)
+			balances_data[i] = hash
+		}
+	}
+	balances_tree = NewMerkleTree(balances_data)
+	return hex.EncodeToString(balances_tree.Root), true
+}
+
+func NFTGetBalancesRoot(balances map[string]bool, user_balance_order []string, max_num_balances int) (string, bool) {
+
+	balances_tree := &MerkleTree{}
+	var balances_data = make([][]byte, max_num_balances)
+	for i := 0; i < max_num_balances; i++ {
+		if i < len(balances) {
+			nft_address := strings.Split(user_balance_order[i], "-")[0]
+			nft_token_id := strings.Split(user_balance_order[i], "-")[0]
+			hash := solsha3.SoliditySHA3(
+				[]string{"address", "uint256", "bytes32"},
+				[]interface{}{
+					nft_address,
+					nft_token_id,
+					"0x0000000000000000000000000000000000000000",
+				},
+			)
+			balances_data[i] = hash
+		} else {
+			hash := solsha3.SoliditySHA3(
+				[]string{"address", "uint256", "bytes32"},
+				[]interface{}{
+					"0x0000000000000000000000000000000000000000",
+					"0",
+					"0x0000000000000000000000000000000000000000",
 				},
 			)
 			balances_data[i] = hash

@@ -10,17 +10,17 @@ import (
 )
 
 type Transaction struct {
-	Id        uint
-	From      string
-	To        string
-	Amount    string
-	Nonce     uint
-	Currency  string
-	Type      string
-	Signature string
-	Data      string
-	IsInvalid bool
-	CreatedAt time.Time
+	Id                           uint
+	From                         string
+	To                           string
+	AmountOrNftTokenId           string
+	Nonce                        uint
+	CurrencyOrNftContractAddress string
+	Type                         string
+	Signature                    string
+	IsInvalid                    bool
+	Data                         string
+	CreatedAt                    time.Time
 }
 
 type ValidatorKeys struct {
