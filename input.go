@@ -20,6 +20,7 @@ type Transaction struct {
 	Signature                    string
 	IsInvalid                    bool
 	Data                         string
+	L2Minted                     bool
 	CreatedAt                    time.Time
 }
 
@@ -35,7 +36,8 @@ type InputData struct {
 	MetaData             map[string]interface{}
 	NewUserBalances      map[string]map[string]string
 	OldUserBalances      map[string]map[string]string
-	UserBalanceOrder     map[string][]string
+	NewUserBalanceOrder  map[string][]string
+	OldUserBalanceOrder  map[string][]string
 	Transactions         []Transaction
 	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
@@ -88,11 +90,19 @@ func GetData(path string) (InputData, string, error) {
 	if err != nil {
 		return input_data, "", err
 	}
-	plan, err = os.ReadFile(path + "/user_balance_order.json")
+	plan, err = os.ReadFile(path + "/new_user_balance_order.json")
 	if err != nil {
 		return input_data, "", err
 	}
-	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
+	err = json.Unmarshal(plan, &input_data.NewUserBalanceOrder)
+	if err != nil {
+		return input_data, "", err
+	}
+	plan, err = os.ReadFile(path + "/old_user_balance_order.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.OldUserBalanceOrder)
 	if err != nil {
 		return input_data, "", err
 	}

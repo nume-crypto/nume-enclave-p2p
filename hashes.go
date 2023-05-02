@@ -47,34 +47,53 @@ func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	return queue_hash, len(valid_queue), true
 }
 
-func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []bool, []string, []string, bool) {
+func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []bool, []string, []string, []int, bool) {
 	var withdrawal_hash []byte
-	var withdrawal_amounts []string
+	var withdrawal_amounts_or_token_id []string
 	var withdrawal_l2_minted []bool
 	var withdrawal_addresses []string
-	var withdrawal_tokens []string
+	var withdrawal_currency_or_nft_contract []string
+	var withdrawal_type []int
 	withdrawal_str := ""
 	for i := 0; i < len(withdrawal); i++ {
 		if withdrawal[i].Type == "withdrawal" {
+
+			withdrawal_str += fmt.Sprintf("%02x", 0)
 			withdrawal_str += withdrawal[i].To[2:]
 			withdrawal_str += withdrawal[i].CurrencyOrNftContractAddress[2:]
 			amt, ok := new(big.Int).SetString(withdrawal[i].AmountOrNftTokenId, 10)
 			if !ok {
-				return withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, ok
+				return withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok
 			}
 			withdrawal_str += fmt.Sprintf("%064x", amt)
-			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].AmountOrNftTokenId)
+			withdrawal_str += fmt.Sprintf("%02x", 0)
+
+			withdrawal_amounts_or_token_id = append(withdrawal_amounts_or_token_id, withdrawal[i].AmountOrNftTokenId)
 			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
-			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].CurrencyOrNftContractAddress)
+			withdrawal_currency_or_nft_contract = append(withdrawal_currency_or_nft_contract, withdrawal[i].CurrencyOrNftContractAddress)
+			withdrawal_l2_minted = append(withdrawal_l2_minted, false)
+			withdrawal_type = append(withdrawal_type, 0)
 		} else if withdrawal[i].Type == "nft_withdrawal" {
-			withdrawal_l2_minted = append(withdrawal_l2_minted, true)
+
+			withdrawal_str += fmt.Sprintf("%02x", 1)
 			withdrawal_str += withdrawal[i].To[2:]
 			withdrawal_str += withdrawal[i].CurrencyOrNftContractAddress[2:]
-			withdrawal_str += fmt.Sprintf("%064x", withdrawal[i].AmountOrNftTokenId)
-			withdrawal_str += fmt.Sprintf("%02x", 1)
-			withdrawal_amounts = append(withdrawal_amounts, withdrawal[i].AmountOrNftTokenId)
+			amt, ok := new(big.Int).SetString(withdrawal[i].AmountOrNftTokenId, 10)
+			if !ok {
+				return withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok
+			}
+			withdrawal_str += fmt.Sprintf("%064x", amt)
+			if withdrawal[i].L2Minted {
+				withdrawal_str += fmt.Sprintf("%02x", 1)
+			} else {
+				withdrawal_str += fmt.Sprintf("%02x", 0)
+			}
+
+			withdrawal_amounts_or_token_id = append(withdrawal_amounts_or_token_id, withdrawal[i].AmountOrNftTokenId)
 			withdrawal_addresses = append(withdrawal_addresses, withdrawal[i].To)
-			withdrawal_tokens = append(withdrawal_tokens, withdrawal[i].CurrencyOrNftContractAddress)
+			withdrawal_currency_or_nft_contract = append(withdrawal_currency_or_nft_contract, withdrawal[i].CurrencyOrNftContractAddress)
+			withdrawal_l2_minted = append(withdrawal_l2_minted, withdrawal[i].L2Minted)
+			withdrawal_type = append(withdrawal_type, 1)
 		}
 	}
 	wa, err := hex.DecodeString(withdrawal_str)
@@ -83,7 +102,7 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []bool, []strin
 	}
 	withdrawal_hash = crypto.Keccak256(wa)
 
-	return withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, true
+	return withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, true
 }
 
 func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, []string, bool) {

@@ -66,7 +66,7 @@ func TestWithdrawalHash(t *testing.T) {
 		return
 	}
 	defer transactions_file.Close()
-	withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, ok := WithdrawalHash(transactions)
+	withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, _, ok := WithdrawalHash(transactions)
 	_ = withdrawal_l2_minted
 	if !ok {
 		t.Errorf("Failed to hash withdrawal")

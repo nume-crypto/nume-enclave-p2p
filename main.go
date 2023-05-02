@@ -14,27 +14,29 @@ import (
 )
 
 type SettlementRequest struct {
-	SettlementId                  uint              `json:"settlementId" binding:"required"`
-	Root                          string            `json:"root" binding:"required"`
-	AggregatedSignature           string            `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                   string            `json:"blockNumber" binding:"required"`
-	ProcessId                     uint              `json:"processId" binding:"required"`
-	QueueHash                     string            `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                    int               `json:"queueIndex"`
-	WithdrawalHash                string            `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmounts             []string          `json:"withdrawalAmounts" binding:"required"`
-	WithdrawalAddresses           []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalTokens              []string          `json:"withdrawalTokes" binding:"required"`
-	WithdrawalL2Minted            []bool            `json:"withdrawalL2Minted" binding:"required"`
-	ContractWithdrawalAddresses   []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts     []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokens      []string          `json:"contractWithdrawalTokes" binding:"required"`
-	ContractWithdrawalQueueIndex  int               `json:"contractWithdrawalQueueIndex"`
-	Message                       string            `json:"message" binding:"required"` // message
-	UsersUpdated                  map[string]string `json:"usersUpdated" binding:"required"`
-	SignatureRecordedAt           time.Time         `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt           time.Time         `json:"settlementStartedAt" binding:"required"`
+	SettlementId                    uint              `json:"settlementId" binding:"required"`
+	Root                            string            `json:"root" binding:"required"`
+	AggregatedSignature             string            `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents   []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                     string            `json:"blockNumber" binding:"required"`
+	QueueHash                       string            `json:"queueHash" binding:"required"` // deposit
+	QueueIndex                      int               `json:"queueIndex"`
+	NftQueueHash                    string            `json:"nftQueueHash" binding:"required"` // deposit nft
+	NftQueueIndex                   int               `json:"nftQueueIndex"`
+	WithdrawalHash                  string            `json:"withdrawalHash" binding:"required"` // withdrawal
+	WithdrawalAmountOrTokenId       []string          `json:"withdrawalAmountOrTokenId" binding:"required"`
+	WithdrawalAddresses             []string          `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalCurrencyOrNftContract []string          `json:"withdrawalCurrencyOrNftContract" binding:"required"`
+	WithdrawalL2Minted              []bool            `json:"withdrawalL2Minted" binding:"required"`
+	WithdrawalType                  []int             `json:"withdrawalType" binding:"required"`
+	ContractWithdrawalAddresses     []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
+	ContractWithdrawalAmounts       []string          `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalTokens        []string          `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex"`
+	Message                         string            `json:"message" binding:"required"` // message
+	UsersUpdated                    map[string]string `json:"usersUpdated" binding:"required"`
+	SignatureRecordedAt             time.Time         `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt             time.Time         `json:"settlementStartedAt" binding:"required"`
 }
 
 func main() {
@@ -77,7 +79,7 @@ func main() {
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
 		go func(i int, u interface{}) {
-			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.UserBalanceOrder[u.(string)], max_num_balances)
+			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.OldUserBalanceOrder[u.(string)], max_num_balances)
 			if !ok {
 				fmt.Println("error in getting balances root")
 				return
@@ -107,14 +109,29 @@ func main() {
 		currencies = append(currencies, c.(string))
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, settlement_type, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
+	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
 		return
 	}
+
+	for _, v := range input_data.MetaData["users_ordered"].([]interface{}) {
+		if _, ok := new_balances[v.(string)]; !ok {
+			fmt.Println(v.(string))
+			new_balances[v.(string)] = make(map[string]string)
+			new_balances[v.(string)]["0x0000000000000000000000000000000000000000"] = "0"
+		} else {
+			if _, ok := new_balances[v.(string)]["0x0000000000000000000000000000000000000000"]; !ok {
+				new_balances[v.(string)]["0x0000000000000000000000000000000000000000"] = "0"
+			}
+		}
+	}
+
 	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
+		PrettyPrint("new_balances", new_balances)
+		PrettyPrint("input_data.NewUserBalances", input_data.NewUserBalances)
 		fmt.Println("new_balances and input_data.NewUserBalances are not equal")
 		return
 	}
@@ -123,7 +140,7 @@ func main() {
 	var prev_tree_root []byte
 	prev_tree_root = append(prev_tree_root, tree.Root...)
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.UserBalanceOrder[u.(string)], max_num_balances)
+		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
 		if !ok {
 			fmt.Println("error in getting balances root new")
 			return
@@ -154,8 +171,8 @@ func main() {
 	fmt.Println("md5_leaf_data_str", md5_leaf_data_str)
 
 	//Upload Public Transaction Data to S3
-	public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
-	_ = public_transaction_data
+	// public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
+	// _ = public_transaction_data
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
@@ -164,13 +181,18 @@ func main() {
 	message := ""
 	var queue_hash []byte
 	var queue_index int
+	var queue_len int
+
+	var nft_queue_hash []byte
+	var nft_queue_index int
+	var nft_queue_len int
 
 	var withdrawal_hash []byte
-	withdrawal_amounts := make([]string, 0)
+	withdrawal_amounts_or_token_id := make([]string, 0)
 	withdrawal_addresses := make([]string, 0)
-	withdrawal_tokens := make([]string, 0)
+	withdrawal_currency_or_nft_contract := make([]string, 0)
 	withdrawal_l2_minted := make([]bool, 0)
-	var queue_len int
+	withdrawal_type := make([]int, 0)
 
 	cw_addresses := make([]string, 0)
 	cw_token_ids := make([]string, 0)
@@ -182,17 +204,9 @@ func main() {
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	md5_leaf_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
-	fmt.Println("settlement_type", settlement_type)
-	// process ID 0: only L2 transactions (+4)
-	// process ID 1: deposit (+2)
-	// process ID 2: withdrawal (backend) (+1)
-	// process ID 3: withdrawal (contract) (+2)
-	// process ID 4: deposit + withdrawal (backend)
-	// process ID 5: deposit + withdrawal (contract)
-	// process ID 6: withdrawal (backend) + withdrawal (contract)
-	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
+
 	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
-	if settlement_type == 1 || settlement_type == 4 || settlement_type == 5 || settlement_type == 7 {
+	if has_process.HasDeposit {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
 			fmt.Println("error in queue size")
@@ -206,7 +220,29 @@ func main() {
 		message += fmt.Sprintf("%064x", queue_len+last_handled_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
 		queue_index = queue_len + last_handled_queue_index
 	}
-	if settlement_type == 3 || settlement_type == 5 || settlement_type == 6 || settlement_type == 7 {
+	if has_process.HasNFTDeposit {
+		last_handled_nft_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_nft_queue_index"].(string))
+		if err != nil {
+			fmt.Println("error in queue size")
+			return
+		}
+		nft_queue_hash, nft_queue_len, ok = QueueHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting queue hash")
+			return
+		}
+		message += fmt.Sprintf("%064x", nft_queue_len+last_handled_nft_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
+		nft_queue_index = nft_queue_len + last_handled_nft_queue_index
+	}
+	if has_process.HasWithdrawal {
+		withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok = WithdrawalHash(input_data.Transactions)
+		if !ok {
+			fmt.Println("error in getting withdrawal_hash")
+			return
+		}
+		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
+	}
+	if has_process.HasContractWithdrawal {
 		last_handled_cw_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_cw_queue_index"].(string))
 		if err != nil {
 			fmt.Println("error in queue size")
@@ -220,15 +256,6 @@ func main() {
 		message += fmt.Sprintf("%064x", cw_queue_len+last_handled_cw_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(cw_queue_hash))
 		cw_queue_index = cw_queue_len + last_handled_cw_queue_index
 	}
-	if settlement_type == 2 || settlement_type == 4 || settlement_type == 6 || settlement_type == 7 {
-		withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, ok = WithdrawalHash(input_data.Transactions)
-		if !ok {
-			fmt.Println("error in getting withdrawal_hash")
-			return
-		}
-		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
-	}
-
 	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.ValidatorKeys)
 	if err != nil {
 		fmt.Println(err)
@@ -238,27 +265,29 @@ func main() {
 	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()
 	response := SettlementRequest{
-		SettlementId:                  uint(input_data.MetaData["settlement_id"].(float64)),
-		Root:                          hex.EncodeToString(new_tree_root),
-		AggregatedSignature:           signature,
-		AggregatedPublicKeyComponents: aggregated_public_key,
-		Message:                       message,
-		BlockNumber:                   bn_str,
-		SignatureRecordedAt:           signature_recorded_at,
-		SettlementStartedAt:           settlement_started_at,
-		ProcessId:                     settlement_type,
-		QueueHash:                     "0x" + hex.EncodeToString(queue_hash),
-		QueueIndex:                    queue_index,
-		WithdrawalHash:                "0x" + hex.EncodeToString(withdrawal_hash),
-		WithdrawalAmounts:             withdrawal_amounts,
-		WithdrawalAddresses:           withdrawal_addresses,
-		WithdrawalTokens:              withdrawal_tokens,
-		WithdrawalL2Minted:            withdrawal_l2_minted,
-		ContractWithdrawalAddresses:   cw_addresses,
-		ContractWithdrawalQueueIndex:  cw_queue_index,
-		ContractWithdrawalAmounts:     cw_amounts,
-		ContractWithdrawalTokens:      cw_token_ids,
-		UsersUpdated:                  users_updated,
+		SettlementId:                    uint(input_data.MetaData["settlement_id"].(float64)),
+		Root:                            hex.EncodeToString(new_tree_root),
+		AggregatedSignature:             signature,
+		AggregatedPublicKeyComponents:   aggregated_public_key,
+		Message:                         message,
+		BlockNumber:                     bn_str,
+		SignatureRecordedAt:             signature_recorded_at,
+		SettlementStartedAt:             settlement_started_at,
+		QueueHash:                       "0x" + hex.EncodeToString(queue_hash),
+		QueueIndex:                      queue_index,
+		NftQueueHash:                    "0x" + hex.EncodeToString(nft_queue_hash),
+		NftQueueIndex:                   nft_queue_index,
+		WithdrawalHash:                  "0x" + hex.EncodeToString(withdrawal_hash),
+		WithdrawalAmountOrTokenId:       withdrawal_amounts_or_token_id,
+		WithdrawalAddresses:             withdrawal_addresses,
+		WithdrawalCurrencyOrNftContract: withdrawal_currency_or_nft_contract,
+		WithdrawalL2Minted:              withdrawal_l2_minted,
+		WithdrawalType:                  withdrawal_type,
+		ContractWithdrawalAddresses:     cw_addresses,
+		ContractWithdrawalQueueIndex:    cw_queue_index,
+		ContractWithdrawalAmounts:       cw_amounts,
+		ContractWithdrawalTokens:        cw_token_ids,
+		UsersUpdated:                    users_updated,
 	}
 	PrettyPrint("response", response)
 

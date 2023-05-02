@@ -214,7 +214,7 @@ func VerifyData(input_tx Transaction, currencies []string) (bool, error) {
 	}
 	// if transactio.tyupe contrains nft if condition
 	var amt_or_token_id, token_address_or_currency, to, from string
-	if input_tx.Type == "nft" {
+	if strings.Contains(input_tx.Type, "nft") {
 		amt_or_token_id, token_address_or_currency, to, from, err = GetNftFromAndTo(eth_tx)
 		if err != nil {
 			return false, err

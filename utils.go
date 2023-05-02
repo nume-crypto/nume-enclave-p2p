@@ -80,12 +80,14 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 	balances_tree := &MerkleTree{}
 	var balances_data = make([][]byte, max_num_balances)
 	for i := 0; i < max_num_balances; i++ {
-		if i < len(balances) {
+		if i < len(balances) && i < len(user_balance_order) {
 			amt_or_token_id := balances[user_balance_order[i]]
 			currency_or_contract := balances[user_balance_order[i]]
+			ctype := "0"
 			if len(user_balance_order[i]) > 42 {
 				amt_or_token_id = strings.Split(user_balance_order[i], "-")[1]
 				currency_or_contract = strings.Split(user_balance_order[i], "-")[0]
+				ctype = "1"
 			}
 			cb2, ok := new(big.Int).SetString(amt_or_token_id, 10)
 			if !ok {
@@ -97,7 +99,7 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 					currency_or_contract,
 					cb2,
 					"0x0000000000000000000000000000000000000000",
-					"0",
+					ctype,
 				},
 			)
 			balances_data[i] = hash
