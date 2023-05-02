@@ -66,28 +66,28 @@ func TestWithdrawalHash(t *testing.T) {
 		return
 	}
 	defer transactions_file.Close()
-	withdrawal_hash, withdrawal_amounts, withdrawal_l2_minted, withdrawal_addresses, withdrawal_tokens, _, ok := WithdrawalHash(transactions)
+	withdrawal_hash, withdrawal_amt_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft, _, ok := WithdrawalHash(transactions)
 	_ = withdrawal_l2_minted
 	if !ok {
 		t.Errorf("Failed to hash withdrawal")
 		return
 	}
-	expected_withdrawal_amounts := []string{"64000", "123", "12124"}
-	if !reflect.DeepEqual(withdrawal_amounts, expected_withdrawal_amounts) {
-		t.Errorf("Failed to get withdrawal amounts expected %v got %v", expected_withdrawal_amounts, withdrawal_amounts)
+	expected_withdrawal_amt_or_token_id := []string{"64000", "123", "12124", "11"}
+	if !reflect.DeepEqual(withdrawal_amt_or_token_id, expected_withdrawal_amt_or_token_id) {
+		t.Errorf("Failed to get withdrawal amounts expected %v got %v", expected_withdrawal_amt_or_token_id, withdrawal_amt_or_token_id)
 		return
 	}
-	expected_withdrawal_addresses := []string{"0x5D9aE648d74dF50746951Cbb2FB296c836A7A0e9", "0xD28c7E81b6E8ba287307c034133EB7d72302eBf3", "0x0132b7813B8D84C6f95253B056329151eBF42E76"}
+	expected_withdrawal_addresses := []string{"0x5D9aE648d74dF50746951Cbb2FB296c836A7A0e9", "0xD28c7E81b6E8ba287307c034133EB7d72302eBf3", "0x0132b7813B8D84C6f95253B056329151eBF42E76", "0x11c830B25a15E39006094377fDc409c11C002B48"}
 	if !reflect.DeepEqual(withdrawal_addresses, expected_withdrawal_addresses) {
 		t.Errorf("Failed to get withdrawal addresses expected %v got %v", expected_withdrawal_addresses, withdrawal_addresses)
 		return
 	}
-	expected_withdrawal_tokens := []string{"0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6", "0x799c6832d187243f3367902079A72fb3Fd61cdF7", "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723"}
-	if !reflect.DeepEqual(withdrawal_tokens, expected_withdrawal_tokens) {
-		t.Errorf("Failed to get withdrawal tokens expected %v got %v", expected_withdrawal_tokens, withdrawal_tokens)
+	expected_withdrawal_currency_or_nft := []string{"0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6", "0x799c6832d187243f3367902079A72fb3Fd61cdF7", "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723", "0x6d9e72d1336e3592f5e4844b9e18e484fc4cf344"}
+	if !reflect.DeepEqual(withdrawal_currency_or_nft, expected_withdrawal_currency_or_nft) {
+		t.Errorf("Failed to get withdrawal tokens expected %v got %v", expected_withdrawal_currency_or_nft, withdrawal_currency_or_nft)
 		return
 	}
-	expected_hash := "323ad72842bb3ddae1baa8dd308ef0a686dd4fa5670cf7ecabc12291bbdade7d"
+	expected_hash := "ce03cc1350094d4790d2485e60be15f76f690d4b900a2cb087f49601241c79b1"
 	if hex.EncodeToString(withdrawal_hash) != expected_hash {
 		t.Errorf("Failed to hash hash expected %s got %s", expected_hash, hex.EncodeToString(withdrawal_hash))
 		return

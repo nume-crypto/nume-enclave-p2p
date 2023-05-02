@@ -9,6 +9,7 @@
         "Type": "deposit",
         "Signature": "deposit.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "deposit.Message",
         "CreatedAt": "2023-04-25T11:47:31.389207Z"
     },
@@ -22,6 +23,7 @@
         "Type": "deposit",
         "Signature": "deposit.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "deposit.Message",
         "CreatedAt": "2023-04-25T11:47:31.389207Z"
     },
@@ -35,6 +37,7 @@
         "Type": "deposit",
         "Signature": "deposit.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "deposit.Message",
         "CreatedAt": "2023-04-25T11:47:31.389207Z"
     },
@@ -48,6 +51,7 @@
         "Type": "transfer",
         "Signature": "05d117ef9ffe8f47663a5140d1507e10b952ec36a653cd35dce8ea58046e946b17945f9cac86fc88b291cf435215adf86e639a006847bc54b427f3ef5a4227c800",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8b18202c6018459682f008459682f00827b0c94ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb000000000000000000000000447bf33f7c7c925eb7674bcf590aed4aa57e656b00000000000000000000000000000000000000000000000000000000000186a0c080a005d117ef9ffe8f47663a5140d1507e10b952ec36a653cd35dce8ea58046e946ba017945f9cac86fc88b291cf435215adf86e639a006847bc54b427f3ef5a4227c8",
         "CreatedAt": "2023-04-25T11:48:18.20598Z"
     },
@@ -61,6 +65,7 @@
         "Type": "transfer",
         "Signature": "a543785baed0969f1eced95facad2cd3b962861e3da7da9b1a69627b3653227549c29af26aab355ed27d85a6cc83d2d0bd59b72cac0c407033821db1be22315c01",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8738202c6048459682f008459682f0082520894447bf33f7c7c925eb7674bcf590aed4aa57e656b872386f26fc1000080c001a0a543785baed0969f1eced95facad2cd3b962861e3da7da9b1a69627b36532275a049c29af26aab355ed27d85a6cc83d2d0bd59b72cac0c407033821db1be22315c",
         "CreatedAt": "2023-04-25T11:51:25.639045Z"
     },
@@ -74,6 +79,7 @@
         "Type": "transfer",
         "Signature": "ec968349b514acc04d2049a2056a8cbca5500bf3301799660e9ca1884dd4759121906a01315710e678f223b248c8ba52a92fa00490b82e3c09bf21668d1a457201",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8b18202c6058459682f008459682f00827b0c94ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb000000000000000000000000447bf33f7c7c925eb7674bcf590aed4aa57e656b0000000000000000000000000000000000000000000000000000000000002710c001a0ec968349b514acc04d2049a2056a8cbca5500bf3301799660e9ca1884dd47591a021906a01315710e678f223b248c8ba52a92fa00490b82e3c09bf21668d1a4572",
         "CreatedAt": "2023-04-25T11:52:15.957017Z"
     },
@@ -87,6 +93,7 @@
         "Type": "transfer",
         "Signature": "53cc18c50f239fbd04f931722297453339fc464f7307f80dc0dc00e11396189b6a8da0cde7f95582c819c967f88f21020a63b54dad4f61a8f8684d4127c86f2601",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8b18202c6068459682f008459682f00827b0c94ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb000000000000000000000000447bf33f7c7c925eb7674bcf590aed4aa57e656b000000000000000000000000000000000000000000000000000000000000c350c001a053cc18c50f239fbd04f931722297453339fc464f7307f80dc0dc00e11396189ba06a8da0cde7f95582c819c967f88f21020a63b54dad4f61a8f8684d4127c86f26",
         "CreatedAt": "2023-04-25T11:53:12.494394Z"
     },
@@ -100,6 +107,7 @@
         "Type": "withdrawal",
         "Signature": "9e3f5dd2dd8029976fbddfce065ba9bf81d4e7f06a860ac7342bb6b8d0a6ecfc445ae94e59bd1db978a71e054cf9865111a3063d9e1198605483b0f09a6911e300",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8b18202c6078459682f008459682f00827b0c94ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb0000000000000000000000005d9ae648d74df50746951cbb2fb296c836a7a0e9000000000000000000000000000000000000000000000000000000000000fa00c080a09e3f5dd2dd8029976fbddfce065ba9bf81d4e7f06a860ac7342bb6b8d0a6ecfca0445ae94e59bd1db978a71e054cf9865111a3063d9e1198605483b0f09a6911e3",
         "CreatedAt": "2023-04-25T11:54:38.252213Z"
     },
@@ -113,6 +121,7 @@
         "Type": "withdrawal",
         "Signature": "3691ed3a0d216686ca6a2262189e8cb026dffd28b34bc96da50998514d418af90348e075103bf1976c4befb2b469c8220d7f4e4e6559b5e06af5d524ce9233041b",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8a98202c602808082520894799c6832d187243f3367902079a72fb3fd61cdf780b844a9059cbb000000000000000000000000d28c7e81b6e8ba287307c034133eb7d72302ebf3000000000000000000000000000000000000000000000000000000000000007bc001a051af2163a98f171dc5b9d5b84b9544cb609e5f5172a4d3c7fea0fbaf488960c5a07082a2689dbed1dae50b63cb77be693d46349b9d1041b3359b64718b49ecd571",
         "CreatedAt": "2023-04-25T11:54:38.252213Z"
     },
@@ -126,6 +135,7 @@
         "Type": "transfer",
         "Signature": "14b76e0955b07c4d32d70779a34167a4e3f1787a0d86823ffbd50442d9506f3d153e4dc10daf17c3b022a90ae88bd1b233c9adb99442150aebe8c520773bc7501b",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8a98202c603808082520894ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb000000000000000000000000fbfbb9492fe00801cf0a52a02fa64a62e4c6e5e60000000000000000000000000000000000000000000000000000000000000022c001a043f4c0c1d3bea5322eb208ef4a734aa649313c38ab17262714097a3e1aa8a24aa009005cadf4c91447f5cf92619ef94aad926669103a2376e59b87f3f21b93fae0",
         "CreatedAt": "2023-04-25T11:54:38.252213Z"
     },
@@ -139,6 +149,7 @@
         "Type": "transfer",
         "Signature": "edef972cf01f43fbb437b0f924b30b780348fc9c23d28bc662ef0281c1b3aee853939bf0bb9b083ee4eb509cab090219f4cb5a45923668742ea94be1bae8fc521b",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8a98202c617808082520894ce47c48fdf8c9355fdbe4dacc1e1954914d65be680b844a9059cbb000000000000000000000000447bf33f7c7c925eb7674bcf590aed4aa57e656b0000000000000000000000000000000000000000000000000000000000000384c001a01f57eef73c8842fea8a3b78df8ff12d4028986bdf40dee09f0b72f69ea787b77a0777ef330c14ac9406f7c0491c9cf26aef3f40ae696083150b630c7454dbf4b92",
         "CreatedAt": "2023-04-25T11:52:15.957017Z"
     },
@@ -152,6 +163,7 @@
         "Type": "withdrawal",
         "Signature": "df20e8c220e5ac776479998ed7571f58144817e1bd13193ebc111c39309db40f69df01107c384cfb0616bb428bfcf8b5d6c9bad9825a89283c72cf1f561706e91c",
         "IsInvalid": false,
+        "L2Minted": false,
         "Data": "0x02f8a98202c618808082520894e9573b8a0af951431bcbd194e8cc3aee654cd72380b844a9059cbb0000000000000000000000000132b7813b8d84c6f95253b056329151ebf42e760000000000000000000000000000000000000000000000000000000000002f5cc080a05eaed56d75028a6d7156f14f7c8f02f1fa4c2174706fce5e79e437e29f9316d6a038b5b5d99f0185d0d2f0ee1d4e729e5ae6df6262902867d634e88e308e4789d0",
         "CreatedAt": "2023-04-25T11:54:38.252213Z"
     },
@@ -165,6 +177,7 @@
         "Type": "contract_withdrawal",
         "Signature": "contract_withdrawal.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "CreatedAt": "2023-04-12T12:14:31.822872+05:30"
     },
     {
@@ -177,6 +190,7 @@
         "Type": "contract_withdrawal",
         "Signature": "contract_withdrawal.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "CreatedAt": "2023-04-12T12:14:31.822872+05:30"
     },
     {
@@ -189,6 +203,7 @@
         "Type": "contract_withdrawal",
         "Signature": "contract_withdrawal.Signature",
         "IsInvalid": false,
+        "L2Minted": false,
         "CreatedAt": "2023-04-12T12:14:31.822872+05:30"
     },
     {
@@ -201,7 +216,36 @@
         "Type": "contract_withdrawal",
         "Signature": "df20e8c220e5ac776479998ed7571f58144817e1bd13193ebc111c39309db40f69df01107c384cfb0616bb428bfcf8b5d6c9bad9825a89283c72cf1f561706e91c",
         "IsInvalid": true,
+        "L2Minted": false,
         "Data": "0x02f8a98202c618808082520894e9573b8a0af951431bcbd194e8cc3aee654cd72380b844a9059cbb0000000000000000000000000132b7813b8d84c6f95253b056329151ebf42e760000000000000000000000000000000000000000000000000000000000002f5cc080a05eaed56d75028a6d7156f14f7c8f02f1fa4c2174706fce5e79e437e29f9316d6a038b5b5d99f0185d0d2f0ee1d4e729e5ae6df6262902867d634e88e308e4789d0",
         "CreatedAt": "2023-04-25T11:54:38.252213Z"
+    },
+    {
+        "Id": 3,
+        "From": "mint.From",
+        "To": "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
+        "AmountOrNftTokenId": "13",
+        "Nonce": 0,
+        "CurrencyOrNftContractAddress": "0x6d9e72d1336e3592f5e4844b9e18e484fc4cf344",
+        "Type": "nft_mint",
+        "Signature": "mint.Signature",
+        "IsInvalid": false,
+        "L2Minted": true,
+        "Data": "mint.Message",
+        "CreatedAt": "2023-05-02T14:06:56.807547+05:30"
+    },
+    {
+        "Id": 1,
+        "From": "0x11c830b25a15e39006094377fdc409c11c002b48",
+        "To": "0x11c830B25a15E39006094377fDc409c11C002B48",
+        "AmountOrNftTokenId": "11",
+        "Nonce": 2,
+        "CurrencyOrNftContractAddress": "0x6d9e72d1336e3592f5e4844b9e18e484fc4cf344",
+        "Type": "nft_withdrawal",
+        "Signature": "298aab6a8912fcc3b220df4778b11e3d2c1533d7c10f8e95017a95465406ce775e50efed2e1a6758caab74a73b53f12eae97801b7060a6533855f9bb0347e50e00",
+        "IsInvalid": false,
+        "L2Minted": true,
+        "Data": "0x02f8ca8202c602808083033450946d9e72d1336e3592f5e4844b9e18e484fc4cf34480b86423b872dd00000000000000000000000011c830b25a15e39006094377fdc409c11c002b4800000000000000000000000011c830b25a15e39006094377fdc409c11c002b48000000000000000000000000000000000000000000000000000000000000000bc080a0298aab6a8912fcc3b220df4778b11e3d2c1533d7c10f8e95017a95465406ce77a05e50efed2e1a6758caab74a73b53f12eae97801b7060a6533855f9bb0347e50e",
+        "CreatedAt": "2023-05-02T14:16:49.380085+05:30"
     }
 ]
