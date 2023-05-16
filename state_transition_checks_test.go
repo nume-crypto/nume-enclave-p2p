@@ -42,7 +42,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer prev_balances_file.Close()
 
-	transactions := make([]Transaction, 0)
+	transactions := make([]interface{}, 0)
 	transactions_file, err := os.Open("test_data/transactions.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/transactions.json")

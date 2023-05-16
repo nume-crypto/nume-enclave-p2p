@@ -108,6 +108,12 @@ func main() {
 	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
 		currencies = append(currencies, c.(string))
 	}
+	input_transactions := []Transaction{}
+	for _, tx := range input_data.Transactions {
+		if t, ok := tx.(Transaction); ok {
+			input_transactions = append(input_transactions, t)
+		}
+	}
 	init_state_balances := input_data.OldUserBalances
 	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
 	if err != nil {
@@ -118,7 +124,6 @@ func main() {
 
 	for _, v := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if _, ok := new_balances[v.(string)]; !ok {
-			fmt.Println(v.(string))
 			new_balances[v.(string)] = make(map[string]string)
 			new_balances[v.(string)]["0x0000000000000000000000000000000000000000"] = "0"
 		} else {
@@ -171,7 +176,7 @@ func main() {
 	fmt.Println("md5_leaf_data_str", md5_leaf_data_str)
 
 	//Upload Public Transaction Data to S3
-	// public_transaction_data := GenerateTransactionPublicData(input_data.Transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
+	// public_transaction_data := GenerateTransactionPublicData(input_transactions, input_data.AddressPublicKeyData, input_data.MetaData["block_number"].(float64))
 	// _ = public_transaction_data
 
 	var new_tree_root []byte
@@ -212,7 +217,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		queue_hash, queue_len, ok = QueueHash(input_data.Transactions)
+		queue_hash, queue_len, ok = QueueHash(input_transactions)
 		if !ok {
 			fmt.Println("error in getting queue hash")
 			return
@@ -226,7 +231,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		nft_queue_hash, nft_queue_len, ok = QueueHash(input_data.Transactions)
+		nft_queue_hash, nft_queue_len, ok = QueueHash(input_transactions)
 		if !ok {
 			fmt.Println("error in getting queue hash")
 			return
@@ -235,7 +240,7 @@ func main() {
 		nft_queue_index = nft_queue_len + last_handled_nft_queue_index
 	}
 	if has_process.HasWithdrawal {
-		withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok = WithdrawalHash(input_data.Transactions)
+		withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok = WithdrawalHash(input_transactions)
 		if !ok {
 			fmt.Println("error in getting withdrawal_hash")
 			return
@@ -248,7 +253,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		cw_queue_hash, cw_queue_len, cw_addresses, cw_amounts, cw_token_ids, ok = WithdrawalQueueHash(input_data.Transactions)
+		cw_queue_hash, cw_queue_len, cw_addresses, cw_amounts, cw_token_ids, ok = WithdrawalQueueHash(input_transactions)
 		if !ok {
 			fmt.Println("error in getting cw queue hash")
 			return

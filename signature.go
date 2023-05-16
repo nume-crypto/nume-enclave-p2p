@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 func DecryptKeys(data map[string]ValidatorKeys, kms_client *kms.KMS) ([]string, []uint, []uint, error) {
@@ -286,4 +287,45 @@ func GetNftFromAndTo(tx *types.Transaction) (string, string, string, string, err
 	nft_token_address = tx.To().Hex()
 	from = input["from"].(common.Address).Hex()
 	return nft_token_id, nft_token_address, to, from, nil
+}
+
+func NftTradeMessage(user, nft_contract_address, nft_token_id, currency_address, amount, bn string) string {
+	hash := solsha3.SoliditySHA3(
+		[]string{"address", "address", "uint256", "address", "uint256", "uint256"},
+		[]interface{}{
+			user,
+			nft_contract_address,
+			nft_token_id,
+			currency_address,
+			amount,
+			bn,
+		},
+	)
+	return hex.EncodeToString(hash)
+}
+
+func EthVerify(message string, sig string, pubkey string) bool {
+	msg_bytes := []byte(message)
+	fullMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(msg_bytes), msg_bytes)
+	hash := crypto.Keccak256Hash([]byte(fullMessage))
+	sb, err := hex.DecodeString(sig[2:])
+	if err != nil {
+		fmt.Println("sb err:", err)
+		return false
+	}
+
+	if sb[crypto.RecoveryIDOffset] == 27 || sb[crypto.RecoveryIDOffset] == 28 {
+		sb[crypto.RecoveryIDOffset] -= 27 // Transform yellow paper V from 27/28 to 0/1
+	}
+
+	recovered, err := crypto.SigToPub(hash.Bytes(), sb)
+	if err != nil {
+		return false
+	}
+	recoveredAddr := crypto.PubkeyToAddress(*recovered)
+	if strings.EqualFold(recoveredAddr.String(), pubkey) {
+		return true
+	} else {
+		return false
+	}
 }

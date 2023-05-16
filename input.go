@@ -24,6 +24,23 @@ type Transaction struct {
 	CreatedAt                    time.Time
 }
 
+type Trade struct {
+	Id                 uint
+	From               string
+	To                 string
+	Amount             string
+	Currency           string
+	LiserNonce         uint
+	BuyerNonce         uint
+	NftTokenId         string
+	NftContractAddress string
+	Type               string
+	ListSignature      string
+	BuySignature       string
+	L2Minted           bool
+	CreatedAt          time.Time
+}
+
 type ValidatorKeys struct {
 	BlsG1PublicKey      []string
 	BlsG2PublicKey      []string
@@ -38,7 +55,7 @@ type InputData struct {
 	OldUserBalances      map[string]map[string]string
 	NewUserBalanceOrder  map[string][]string
 	OldUserBalanceOrder  map[string][]string
-	Transactions         []Transaction
+	Transactions         []interface{}
 	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
 }

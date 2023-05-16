@@ -94,3 +94,19 @@ func TestSignMessage(t *testing.T) {
 		return
 	}
 }
+
+func TestNftTradeMessage(t *testing.T) {
+	sig := NftTradeMessage("0xCcFf350Ef46B85228d6650a802107e58BF6A32Ab", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "1")
+	if sig != "fb053228ebfe580d705665ce141bab48720b7a5dc320ddd125ff54cb2caadb1c" {
+		t.Errorf("Expected fb053228ebfe580d705665ce141bab48720b7a5dc320ddd125ff54cb2caadb1c, got %s", sig)
+		return
+	}
+}
+
+func TestEthVerify(t *testing.T) {
+	verify := EthVerify("fb053228ebfe580d705665ce141bab48720b7a5dc320ddd125ff54cb2caadb1c", "0xa72a93780d73208fd0790c614b9acd019d9be10fe3cbb0a058a964f9ba3fe27678e85d6f00ba93f9091bfac96f2c7e46ccbe3da6877de490f9664ae1ef9f2b091c", "0x13eB1ADfee2fa4813B658349dda1dcD051f89a34")
+	if verify != true {
+		t.Errorf("Expected true, got %t", verify)
+		return
+	}
+}
