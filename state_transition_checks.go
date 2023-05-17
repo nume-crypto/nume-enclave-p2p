@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 )
 
 func CheckNonce(last_nonce, current_nonce uint64) bool {
@@ -70,7 +71,8 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 					Id:                 uint(t["Id"].(float64)),
 					From:               t["From"].(string),
 					To:                 t["To"].(string),
-					Amount:             t["Amount"].(string),
+					ListAmount:         t["ListAmount"].(string),
+					BuyAmount:          t["BuyAmount"].(string),
 					Currency:           t["Currency"].(string),
 					LiserNonce:         uint(t["LiserNonce"].(float64)),
 					BuyerNonce:         uint(t["BuyerNonce"].(float64)),
@@ -276,6 +278,19 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 
 		if trade.Type == "nft_trade" {
 			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
+			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.LiserNonce)))
+			if !EthVerify(list_message, trade.ListSignature, trade.From) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
+			}
+
+			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)))
+			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid buy signature")
+			}
+
+			if trade.ListAmount > trade.BuyAmount {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("list amount must be less than or equal to buy amount")
+			}
 
 			// NFT TRANSFER
 			users_updated_map[trade.From] = true
@@ -298,7 +313,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			users_updated_map[trade.To] = true
 			if _, ok := state_balances[trade.To]; ok {
 				if _, ok := state_balances[trade.To][trade.Currency]; ok {
-					amount, ok := new(big.Int).SetString(trade.Amount, 10)
+					amount, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 					if !ok {
 						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 1")
 					}
@@ -310,15 +325,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 					new_amt.Sub(current_balance, amount)
 					state_balances[trade.To][trade.Currency] = new_amt.String()
 				} else {
-					state_balances[trade.To][trade.Currency] = "-" + trade.Amount
+					state_balances[trade.To][trade.Currency] = "-" + trade.BuyAmount
 				}
 			} else {
 				state_balances[trade.To] = make(map[string]string)
-				state_balances[trade.To][trade.Currency] = "-" + trade.Amount
+				state_balances[trade.To][trade.Currency] = "-" + trade.BuyAmount
 			}
 			if _, ok := state_balances[trade.From]; ok {
 				if _, ok := state_balances[trade.From][trade.Currency]; ok {
-					amount, ok := new(big.Int).SetString(trade.Amount, 10)
+					amount, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 					if !ok {
 						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 3")
 					}
@@ -330,11 +345,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 					new_amt.Add(amount, current_balance)
 					state_balances[trade.From][trade.Currency] = new_amt.String()
 				} else {
-					state_balances[trade.From][trade.Currency] = trade.Amount
+					state_balances[trade.From][trade.Currency] = trade.BuyAmount
 				}
 			} else {
 				state_balances[trade.From] = make(map[string]string)
-				state_balances[trade.From][trade.Currency] = trade.Amount
+				state_balances[trade.From][trade.Currency] = trade.BuyAmount
 			}
 		}
 	}

@@ -28,7 +28,8 @@ type Trade struct {
 	Id                 uint
 	From               string
 	To                 string
-	Amount             string
+	ListAmount         string
+	BuyAmount          string
 	Currency           string
 	LiserNonce         uint
 	BuyerNonce         uint
