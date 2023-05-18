@@ -65,7 +65,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		var transaction Transaction
 		var trade Trade
 		if t, ok := tx.(map[string]interface{}); ok {
-			PrettyPrint("t", t)
 			if t["Type"] == "nft_trade" {
 				trade = Trade{
 					Id:                 uint(t["Id"].(float64)),
@@ -116,7 +115,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "" {
 			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
-		fmt.Println(transaction.Type)
 		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
 		switch transaction.Type {
 		case "nft_deposit":
