@@ -288,7 +288,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid buy signature")
 			}
 
-			if trade.ListAmount > trade.BuyAmount {
+			amount_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+			}
+			listed_amt_bi, ok := new(big.Int).SetString(trade.ListAmount, 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+			}
+			if amount_bi.Cmp(listed_amt_bi) < 0 {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("list amount must be less than or equal to buy amount")
 			}
 
