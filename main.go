@@ -110,8 +110,23 @@ func main() {
 	}
 	input_transactions := []Transaction{}
 	for _, tx := range input_data.Transactions {
-		if t, ok := tx.(Transaction); ok {
-			input_transactions = append(input_transactions, t)
+		if t, ok := tx.(map[string]interface{}); ok {
+			if t["Type"] != "nft_trade" {
+				transaction := Transaction{
+					Id:                           uint(t["Id"].(float64)),
+					From:                         t["From"].(string),
+					To:                           t["To"].(string),
+					AmountOrNftTokenId:           t["AmountOrNftTokenId"].(string),
+					Nonce:                        uint(t["Nonce"].(float64)),
+					CurrencyOrNftContractAddress: t["CurrencyOrNftContractAddress"].(string),
+					Type:                         t["Type"].(string),
+					Signature:                    t["Signature"].(string),
+					IsInvalid:                    t["IsInvalid"].(bool),
+					L2Minted:                     t["L2Minted"].(bool),
+					Data:                         t["Data"].(string),
+				}
+				input_transactions = append(input_transactions, transaction)
+			}
 		}
 	}
 	init_state_balances := input_data.OldUserBalances
