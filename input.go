@@ -14,17 +14,36 @@ import (
 )
 
 type Transaction struct {
-	Id        uint
-	From      string
-	To        string
-	Amount    string
-	Nonce     uint
-	Currency  string
-	Type      string
-	Signature string
-	Data      string
-	IsInvalid bool
-	CreatedAt time.Time
+	Id                           uint
+	From                         string
+	To                           string
+	AmountOrNftTokenId           string
+	Nonce                        uint
+	CurrencyOrNftContractAddress string
+	Type                         string
+	Signature                    string
+	IsInvalid                    bool
+	Data                         string
+	L2Minted                     bool
+	CreatedAt                    time.Time
+}
+
+type Trade struct {
+	Id                 uint
+	From               string
+	To                 string
+	ListAmount         string
+	BuyAmount          string
+	Currency           string
+	LiserNonce         uint
+	BuyerNonce         uint
+	NftTokenId         string
+	NftContractAddress string
+	Type               string
+	ListSignature      string
+	BuySignature       string
+	L2Minted           bool
+	CreatedAt          time.Time
 }
 
 type ValidatorKeys struct {
@@ -39,8 +58,9 @@ type InputData struct {
 	MetaData             map[string]interface{}
 	NewUserBalances      map[string]map[string]string
 	OldUserBalances      map[string]map[string]string
-	UserBalanceOrder     map[string][]string
-	Transactions         []Transaction
+	NewUserBalanceOrder  map[string][]string
+	OldUserBalanceOrder  map[string][]string
+	Transactions         []interface{}
 	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
 	KmsPayload           KmsPayload
@@ -93,11 +113,19 @@ func GetData(path string) (InputData, string, error) {
 	if err != nil {
 		return input_data, "", err
 	}
-	plan, err = os.ReadFile(path + "/user_balance_order.json")
+	plan, err = os.ReadFile(path + "/new_user_balance_order.json")
 	if err != nil {
 		return input_data, "", err
 	}
-	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
+	err = json.Unmarshal(plan, &input_data.NewUserBalanceOrder)
+	if err != nil {
+		return input_data, "", err
+	}
+	plan, err = os.ReadFile(path + "/old_user_balance_order.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.OldUserBalanceOrder)
 	if err != nil {
 		return input_data, "", err
 	}
@@ -177,14 +205,26 @@ func GetDataOverSocket(con *vsock.Conn) (InputData, error) {
 		return input_data, err
 	}
 
-	fmt.Println("Sending to Server: user_balance_order.json")
-	con.Write([]byte("user_balance_order.json" + "\n"))
+	fmt.Println("Sending to Server: new_user_balance_order.json")
+	con.Write([]byte("new_user_balance_order.json" + "\n"))
 	//plan, err = os.ReadFile(path + "/user_balance_order.json")
 	plan, err = bufio.NewReader(con).ReadBytes('\n')
 	if err != nil {
 		return input_data, err
 	}
-	err = json.Unmarshal(plan, &input_data.UserBalanceOrder)
+	err = json.Unmarshal(plan, &input_data.NewUserBalanceOrder)
+	if err != nil {
+		return input_data, err
+	}
+
+	fmt.Println("Sending to Server: old_user_balance_order.json")
+	con.Write([]byte("old_user_balance_order.json" + "\n"))
+	//plan, err = os.ReadFile(path + "/user_balance_order.json")
+	plan, err = bufio.NewReader(con).ReadBytes('\n')
+	if err != nil {
+		return input_data, err
+	}
+	err = json.Unmarshal(plan, &input_data.OldUserBalanceOrder)
 	if err != nil {
 		return input_data, err
 	}

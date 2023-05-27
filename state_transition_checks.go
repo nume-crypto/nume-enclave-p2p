@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 )
 
 func CheckNonce(last_nonce, current_nonce uint64) bool {
@@ -18,7 +19,7 @@ type TransactionPublicData struct {
 	Transactions []TransferTransaction `json:"transactions"`
 }
 
-func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
+/*func GenerateTransactionPublicData(transactions []interface{}, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
 	var transferTransactions []TransferTransaction
 	for _, transaction := range transactions {
 		switch transaction.Type {
@@ -48,224 +49,368 @@ func GenerateTransactionPublicData(transactions []Transaction, address_pubkey_ma
 	}
 	return transactionPublicData
 }
+*/
 
-func GetDeltaBalances(transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, map[string]uint64, error) {
+func GenerateTransactionPublicData(transactions []interface{}, address_pubkey_map map[string]string, block_number float64) TransactionPublicData {
+	var transferTransactions []TransferTransaction
+	for _, transaction := range transactions {
+		switch t := transaction.(type) {
+		case map[string]interface{}:
+			if t["Type"] == "transfer" {
+				from := t["From"].(string)
+				to := t["To"].(string)
+				if address_pubkey_map[from] != "" && address_pubkey_map[to] != "" {
+					// Create a Transaction
+					tx := Transaction{
+						Id:                           uint(t["Id"].(float64)),
+						From:                         t["From"].(string),
+						To:                           t["To"].(string),
+						AmountOrNftTokenId:           t["AmountOrNftTokenId"].(string),
+						Nonce:                        uint(t["Nonce"].(float64)),
+						CurrencyOrNftContractAddress: t["CurrencyOrNftContractAddress"].(string),
+						Type:                         t["Type"].(string),
+						Signature:                    t["Signature"].(string),
+						IsInvalid:                    t["IsInvalid"].(bool),
+						L2Minted:                     t["L2Minted"].(bool),
+						Data:                         t["Data"].(string),
+					}
+					encryptedTxSender, err := EncryptTransactionWithPubKey(&tx, block_number, address_pubkey_map[from])
+					if err != nil {
+						fmt.Println("unable to encrypt message for ", from)
+						continue
+					}
+					encryptedTxReceiver, err := EncryptTransactionWithPubKey(&tx, block_number, address_pubkey_map[to])
+					if err != nil {
+						fmt.Println("unable to encrypt message for ", to)
+						continue
+					}
+					transferTransaction := TransferTransaction{
+						ID:                uint(t["Id"].(float64)),
+						EncryptionOutputs: []string{encryptedTxSender, encryptedTxReceiver},
+					}
+					transferTransactions = append(transferTransactions, transferTransaction)
+				}
+			}
+		default:
+			fmt.Println("Unsupported transaction type")
+		}
+	}
+
+	transactionPublicData := TransactionPublicData{
+		Transactions: transferTransactions,
+	}
+	return transactionPublicData
+}
+
+type HasProcess struct {
+	HasDeposit            bool
+	HasWithdrawal         bool
+	HasContractWithdrawal bool
+	HasNFTDeposit         bool
+}
+
+func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
 	users_updated_map := make(map[string]bool)
-	settlement_type := uint(0)
 	user_nonce_tracker := make(map[string]uint64)
-	delta_balances := make(map[string]map[string]string)
-	has_deposit := false
-	has_withdraw := false
-	has_contract_withdrawal := false
-	for i, transaction := range transactions {
+	has_process := HasProcess{}
+	for i, tx := range transactions {
+		var transaction Transaction
+		var trade Trade
+		if t, ok := tx.(map[string]interface{}); ok {
+			if t["Type"] == "nft_trade" {
+				trade = Trade{
+					Id:                 uint(t["Id"].(float64)),
+					From:               t["From"].(string),
+					To:                 t["To"].(string),
+					ListAmount:         t["ListAmount"].(string),
+					BuyAmount:          t["BuyAmount"].(string),
+					Currency:           t["Currency"].(string),
+					LiserNonce:         uint(t["LiserNonce"].(float64)),
+					BuyerNonce:         uint(t["BuyerNonce"].(float64)),
+					NftTokenId:         t["NftTokenId"].(string),
+					NftContractAddress: t["NftContractAddress"].(string),
+					Type:               t["Type"].(string),
+					ListSignature:      t["ListSignature"].(string),
+					BuySignature:       t["BuySignature"].(string),
+					L2Minted:           t["L2Minted"].(bool),
+				}
+			} else {
+				transaction = Transaction{
+					Id:                           uint(t["Id"].(float64)),
+					From:                         t["From"].(string),
+					To:                           t["To"].(string),
+					AmountOrNftTokenId:           t["AmountOrNftTokenId"].(string),
+					Nonce:                        uint(t["Nonce"].(float64)),
+					CurrencyOrNftContractAddress: t["CurrencyOrNftContractAddress"].(string),
+					Type:                         t["Type"].(string),
+					Signature:                    t["Signature"].(string),
+					IsInvalid:                    t["IsInvalid"].(bool),
+					L2Minted:                     t["L2Minted"].(bool),
+					Data:                         t["Data"].(string),
+				}
+			}
+		} else {
+			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid transaction type")
+		}
 		if transaction.IsInvalid {
 			if transaction.Type == "contract_withdrawal" {
-				has_contract_withdrawal = true
+				has_process.HasContractWithdrawal = true
 			}
 			continue
 		}
-		if transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
+		if transaction.Type != "" && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
 			verified, err := VerifyData(transaction, currencies)
 			if !verified || err != nil {
-				return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
-		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
-			return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "" {
+			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
+		switch transaction.Type {
+		case "nft_deposit":
+			users_updated_map[transaction.To] = true
+			has_process.HasNFTDeposit = true
+			if _, ok := state_balances[transaction.To]; ok {
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			} else {
+				state_balances[transaction.To] = make(map[string]string)
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			}
+		case "nft_mint":
+			users_updated_map[transaction.To] = true
+			if _, ok := state_balances[transaction.To]; ok {
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			} else {
+				state_balances[transaction.To] = make(map[string]string)
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			}
+		case "nft_transfer":
+			users_updated_map[transaction.From] = true
+			users_updated_map[transaction.To] = true
+			if _, ok := state_balances[transaction.To]; ok {
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			} else {
+				state_balances[transaction.To] = make(map[string]string)
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
+			}
+			if _, ok := state_balances[transaction.From]; ok {
+				delete(state_balances[transaction.From], transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId)
+			}
+			if len(state_balances[transaction.From]) == 0 {
+				delete(state_balances, transaction.From)
+			}
+		case "nft_withdrawal":
+			users_updated_map[transaction.From] = true
+			has_process.HasWithdrawal = true
+			if _, ok := state_balances[transaction.From]; ok {
+				delete(state_balances[transaction.From], transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId)
+			}
+			if len(state_balances[transaction.From]) == 0 {
+				delete(state_balances, transaction.From)
+			}
+		}
 		switch transaction.Type {
 		case "transfer":
 			users_updated_map[transaction.From] = true
 			users_updated_map[transaction.To] = true
-			if _, ok := delta_balances[transaction.From]; ok {
-				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
-					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
+			if _, ok := state_balances[transaction.From]; ok {
+				if _, ok := state_balances[transaction.From][transaction.CurrencyOrNftContractAddress]; ok {
+					amount, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
-					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
+					current_balance, ok := new(big.Int).SetString(state_balances[transaction.From][transaction.CurrencyOrNftContractAddress], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
-					delta_balances[transaction.From][transaction.Currency] = new_amt.String()
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = new_amt.String()
 				} else {
-					delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 				}
 			} else {
-				delta_balances[transaction.From] = make(map[string]string)
-				delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+				state_balances[transaction.From] = make(map[string]string)
+				state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 			}
-			if _, ok := delta_balances[transaction.To]; ok {
-				if _, ok := delta_balances[transaction.To][transaction.Currency]; ok {
-					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
+			if _, ok := state_balances[transaction.To]; ok {
+				if _, ok := state_balances[transaction.To][transaction.CurrencyOrNftContractAddress]; ok {
+					amount, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
-					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.To][transaction.Currency], 10)
+					current_balance, ok := new(big.Int).SetString(state_balances[transaction.To][transaction.CurrencyOrNftContractAddress], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
-					delta_balances[transaction.To][transaction.Currency] = new_amt.String()
+					state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = new_amt.String()
 				} else {
-					delta_balances[transaction.To][transaction.Currency] = transaction.Amount
+					state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = transaction.AmountOrNftTokenId
 				}
 			} else {
-				delta_balances[transaction.To] = make(map[string]string)
-				delta_balances[transaction.To][transaction.Currency] = transaction.Amount
+				state_balances[transaction.To] = make(map[string]string)
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = transaction.AmountOrNftTokenId
 			}
 		case "deposit":
 			users_updated_map[transaction.To] = true
-			has_deposit = true
-			if _, ok := delta_balances[transaction.To]; ok {
-				if _, ok := delta_balances[transaction.To][transaction.Currency]; ok {
-					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
+			has_process.HasDeposit = true
+			if _, ok := state_balances[transaction.To]; ok {
+				if _, ok := state_balances[transaction.To][transaction.CurrencyOrNftContractAddress]; ok {
+					amount, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
-					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.To][transaction.Currency], 10)
+					current_balance, ok := new(big.Int).SetString(state_balances[transaction.To][transaction.CurrencyOrNftContractAddress], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
-					delta_balances[transaction.To][transaction.Currency] = new_amt.String()
+					state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = new_amt.String()
 				} else {
-					delta_balances[transaction.To][transaction.Currency] = transaction.Amount
+					state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = transaction.AmountOrNftTokenId
 				}
 			} else {
-				delta_balances[transaction.To] = make(map[string]string)
-				delta_balances[transaction.To][transaction.Currency] = transaction.Amount
+				state_balances[transaction.To] = make(map[string]string)
+				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = transaction.AmountOrNftTokenId
 			}
 		case "withdrawal":
 			users_updated_map[transaction.From] = true
-			has_withdraw = true
-			if _, ok := delta_balances[transaction.From]; ok {
-				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
-					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
+			has_process.HasWithdrawal = true
+			if _, ok := state_balances[transaction.From]; ok {
+				if _, ok := state_balances[transaction.From][transaction.CurrencyOrNftContractAddress]; ok {
+					amount, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
-					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
+					current_balance, ok := new(big.Int).SetString(state_balances[transaction.From][transaction.CurrencyOrNftContractAddress], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
-					delta_balances[transaction.From][transaction.Currency] = new_amt.String()
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = new_amt.String()
 				} else {
-					delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 				}
 			} else {
-				delta_balances[transaction.From] = make(map[string]string)
-				delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+				state_balances[transaction.From] = make(map[string]string)
+				state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 			}
 		case "contract_withdrawal":
 			users_updated_map[transaction.From] = true
-			has_contract_withdrawal = true
-			if _, ok := delta_balances[transaction.From]; ok {
-				if _, ok := delta_balances[transaction.From][transaction.Currency]; ok {
-					amount, ok := new(big.Int).SetString(transaction.Amount, 10)
+			has_process.HasContractWithdrawal = true
+			if _, ok := state_balances[transaction.From]; ok {
+				if _, ok := state_balances[transaction.From][transaction.CurrencyOrNftContractAddress]; ok {
+					amount, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
-					current_balance, ok := new(big.Int).SetString(delta_balances[transaction.From][transaction.Currency], 10)
+					current_balance, ok := new(big.Int).SetString(state_balances[transaction.From][transaction.CurrencyOrNftContractAddress], 10)
 					if !ok {
-						return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
-					delta_balances[transaction.From][transaction.Currency] = new_amt.String()
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = new_amt.String()
 				} else {
-					delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+					state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 				}
 			} else {
-				delta_balances[transaction.From] = make(map[string]string)
-				delta_balances[transaction.From][transaction.Currency] = "-" + transaction.Amount
+				state_balances[transaction.From] = make(map[string]string)
+				state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = "-" + transaction.AmountOrNftTokenId
 			}
 		}
-	}
-	// process ID 0: only L2 transactions (+4)
-	// process ID 1: deposit (+2)
-	// process ID 2: withdrawal (backend) (+1)
-	// process ID 3: withdrawal (contract) (+2)
-	// process ID 4: deposit + withdrawal (backend)
-	// process ID 5: deposit + withdrawal (contract)
-	// process ID 6: withdrawal (backend) + withdrawal (contract)
-	// process ID 7: deposit + withdrawal (backend) + withdrawal (contract)
-	settlement_type = 0
-	if has_deposit {
-		settlement_type = 1
-	}
-	if has_withdraw {
-		settlement_type = 2
-	}
-	if has_contract_withdrawal {
-		settlement_type = 3
-	}
-	if has_deposit && has_withdraw {
-		settlement_type = 4
-	}
-	if has_deposit && has_contract_withdrawal {
-		settlement_type = 5
-	}
-	if has_withdraw && has_contract_withdrawal {
-		settlement_type = 6
-	}
-	if has_deposit && has_withdraw && has_contract_withdrawal {
-		settlement_type = 7
-	}
 
-	return delta_balances, settlement_type, users_updated_map, user_nonce_tracker, nil
-}
+		if trade.Type == "nft_trade" {
+			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
+			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.LiserNonce)))
+			if !EthVerify(list_message, trade.ListSignature, trade.From) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
+			}
 
-func TransitionState(state_balances map[string]map[string]string, transactions []Transaction, currencies []string) (map[string]map[string]string, uint, map[string]bool, map[string]uint64, error) {
-	delta_balances, settlement_type, users_updated, user_nonce_tracker, err := GetDeltaBalances(transactions, currencies)
-	if err != nil {
-		return state_balances, settlement_type, users_updated, user_nonce_tracker, err
-	}
-	for user, balances := range delta_balances {
-		if _, ok := state_balances[user]; ok {
-			for currency, balance := range balances {
-				if _, ok := state_balances[user][currency]; ok {
-					amount, ok := new(big.Int).SetString(balance, 10)
+			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)))
+			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid buy signature")
+			}
+
+			amount_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+			}
+			listed_amt_bi, ok := new(big.Int).SetString(trade.ListAmount, 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+			}
+			if amount_bi.Cmp(listed_amt_bi) < 0 {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("list amount must be less than or equal to buy amount")
+			}
+
+			// NFT TRANSFER
+			users_updated_map[trade.From] = true
+			users_updated_map[trade.To] = true
+			if _, ok := state_balances[trade.To]; ok {
+				state_balances[trade.To][trade.NftContractAddress+"-"+trade.NftTokenId] = "yes"
+			} else {
+				state_balances[trade.To] = make(map[string]string)
+				state_balances[trade.To][trade.NftContractAddress+"-"+trade.NftTokenId] = "yes"
+			}
+			if _, ok := state_balances[trade.From]; ok {
+				delete(state_balances[trade.From], trade.NftContractAddress+"-"+trade.NftTokenId)
+			}
+			if len(state_balances[trade.From]) == 0 {
+				delete(state_balances, trade.From)
+			}
+
+			// TOKEN TRANSFER
+			users_updated_map[trade.From] = true
+			users_updated_map[trade.To] = true
+			if _, ok := state_balances[trade.To]; ok {
+				if _, ok := state_balances[trade.To][trade.Currency]; ok {
+					amount, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 					if !ok {
-						return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 1")
 					}
-					current_balance, ok := new(big.Int).SetString(state_balances[user][currency], 10)
-
+					current_balance, ok := new(big.Int).SetString(state_balances[trade.To][trade.Currency], 10)
 					if !ok {
-						return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 2")
+					}
+					new_amt := new(big.Int)
+					new_amt.Sub(current_balance, amount)
+					state_balances[trade.To][trade.Currency] = new_amt.String()
+				} else {
+					state_balances[trade.To][trade.Currency] = "-" + trade.BuyAmount
+				}
+			} else {
+				state_balances[trade.To] = make(map[string]string)
+				state_balances[trade.To][trade.Currency] = "-" + trade.BuyAmount
+			}
+			if _, ok := state_balances[trade.From]; ok {
+				if _, ok := state_balances[trade.From][trade.Currency]; ok {
+					amount, ok := new(big.Int).SetString(trade.BuyAmount, 10)
+					if !ok {
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 3")
+					}
+					current_balance, ok := new(big.Int).SetString(state_balances[trade.From][trade.Currency], 10)
+					if !ok {
+						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int nft trade 4")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
-					state_balances[user][currency] = new_amt.String()
+					state_balances[trade.From][trade.Currency] = new_amt.String()
 				} else {
-					state_balances[user][currency] = balance
+					state_balances[trade.From][trade.Currency] = trade.BuyAmount
 				}
-			}
-		} else {
-			state_balances[user] = make(map[string]string)
-			for currency, balance := range balances {
-				state_balances[user][currency] = balance
-			}
-		}
-	}
-	for user, balances := range state_balances {
-		for currency, balance := range balances {
-			amount, ok := new(big.Int).SetString(balance, 10)
-			if !ok {
-				return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
-			}
-			if amount.Cmp(big.NewInt(0)) < 0 {
-				return state_balances, settlement_type, users_updated, user_nonce_tracker, fmt.Errorf("balance for user %s and currency %s is less than 0, %s", user, currency, amount)
+			} else {
+				state_balances[trade.From] = make(map[string]string)
+				state_balances[trade.From][trade.Currency] = trade.BuyAmount
 			}
 		}
 	}
 
-	return state_balances, settlement_type, users_updated, user_nonce_tracker, nil
+	return state_balances, has_process, users_updated_map, user_nonce_tracker, nil
 }

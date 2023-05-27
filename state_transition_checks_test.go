@@ -42,7 +42,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	defer prev_balances_file.Close()
 
-	transactions := make([]Transaction, 0)
+	transactions := make([]interface{}, 0)
 	transactions_file, err := os.Open("test_data/transactions.json")
 	if err != nil {
 		t.Errorf("Error opening test_data/transactions.json")
@@ -84,13 +84,9 @@ func TestTransitionState(t *testing.T) {
 	for _, currency := range meta_data["currencies"].([]interface{}) {
 		currencies = append(currencies, currency.(string))
 	}
-	new_balances, settlement_type, _, _, err := TransitionState(prev_balances, transactions, currencies)
+	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
-		return
-	}
-	if settlement_type != 7 {
-		t.Errorf("settlement_type = %d, want %d", settlement_type, 4)
 		return
 	}
 

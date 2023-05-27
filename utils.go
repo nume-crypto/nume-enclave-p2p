@@ -21,8 +21,9 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func PrettyPrint(v interface{}) (err error) {
+func PrettyPrint(text string, v interface{}) (err error) {
 	b, err := json.MarshalIndent(v, "", "  ")
+	fmt.Println(text)
 	if err == nil {
 		fmt.Println(string(b))
 	}
@@ -54,7 +55,8 @@ func NestedMapsEqual(m1, m2 map[string]map[string]string) bool {
 	}
 	for k, v1 := range m1 {
 		if v2, ok := m2[k]; !ok || !MapsEqual(v1, v2) {
-			fmt.Println("v1", v1, "v2", v2)
+			PrettyPrint("v1", v1)
+			PrettyPrint("v2", v2)
 			return false
 		}
 	}
@@ -74,7 +76,6 @@ func MapsEqual(m1, m2 map[string]string) bool {
 }
 
 func GetBalancesRoot(balances map[string]string, user_balance_order []string, max_num_balances int) (string, bool) {
-
 	balances_tree := &MerkleTree{}
 	var balances_data = make([][]byte, max_num_balances)
 	for i := 0; i < max_num_balances; i++ {
