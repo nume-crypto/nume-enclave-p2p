@@ -51,10 +51,11 @@ type TransactionPublicData struct {
 // }
 
 type HasProcess struct {
-	HasDeposit            bool
-	HasWithdrawal         bool
-	HasContractWithdrawal bool
-	HasNFTDeposit         bool
+	HasDeposit               bool
+	HasWithdrawal            bool
+	HasContractWithdrawal    bool
+	HasNFTDeposit            bool
+	HasNFTContractWithdrawal bool
 }
 
 func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
@@ -104,15 +105,18 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			if transaction.Type == "contract_withdrawal" {
 				has_process.HasContractWithdrawal = true
 			}
+			if transaction.Type == "nft_contract_withdrawal" {
+				has_process.HasNFTContractWithdrawal = true
+			}
 			continue
 		}
-		if transaction.Type != "" && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" {
+		if transaction.Type != "" && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" {
 			verified, err := VerifyData(transaction, currencies)
 			if !verified || err != nil {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
-		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "" {
+		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" && transaction.Type != "" {
 			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
@@ -152,6 +156,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		case "nft_withdrawal":
 			users_updated_map[transaction.From] = true
 			has_process.HasWithdrawal = true
+			if _, ok := state_balances[transaction.From]; ok {
+				delete(state_balances[transaction.From], transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId)
+			}
+			if len(state_balances[transaction.From]) == 0 {
+				delete(state_balances, transaction.From)
+			}
+		case "nft_contract_withdrawal":
+			users_updated_map[transaction.From] = true
+			has_process.HasNFTContractWithdrawal = true
 			if _, ok := state_balances[transaction.From]; ok {
 				delete(state_balances[transaction.From], transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId)
 			}

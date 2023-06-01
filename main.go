@@ -14,29 +14,34 @@ import (
 )
 
 type SettlementRequest struct {
-	SettlementId                    uint              `json:"settlementId" binding:"required"`
-	Root                            string            `json:"root" binding:"required"`
-	AggregatedSignature             string            `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents   []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                     string            `json:"blockNumber" binding:"required"`
-	QueueHash                       string            `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                      int               `json:"queueIndex"`
-	NftQueueHash                    string            `json:"nftQueueHash" binding:"required"` // deposit nft
-	NftQueueIndex                   int               `json:"nftQueueIndex"`
-	WithdrawalHash                  string            `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmountOrTokenId       []string          `json:"withdrawalAmountOrTokenId" binding:"required"`
-	WithdrawalAddresses             []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalCurrencyOrNftContract []string          `json:"withdrawalCurrencyOrNftContract" binding:"required"`
-	WithdrawalL2Minted              []bool            `json:"withdrawalL2Minted" binding:"required"`
-	WithdrawalType                  []int             `json:"withdrawalType" binding:"required"`
-	ContractWithdrawalAddresses     []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts       []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokens        []string          `json:"contractWithdrawalTokes" binding:"required"`
-	ContractWithdrawalQueueIndex    int               `json:"contractWithdrawalQueueIndex"`
-	Message                         string            `json:"message" binding:"required"` // message
-	UsersUpdated                    map[string]string `json:"usersUpdated" binding:"required"`
-	SignatureRecordedAt             time.Time         `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt             time.Time         `json:"settlementStartedAt" binding:"required"`
+	SettlementId                         uint              `json:"settlementId" binding:"required"`
+	Root                                 string            `json:"root" binding:"required"`
+	AggregatedSignature                  string            `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents        []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                          string            `json:"blockNumber" binding:"required"`
+	QueueHash                            string            `json:"queueHash" binding:"required"` // deposit
+	QueueIndex                           int               `json:"queueIndex"`
+	NftQueueHash                         string            `json:"nftQueueHash" binding:"required"` // deposit nft
+	NftQueueIndex                        int               `json:"nftQueueIndex"`
+	WithdrawalHash                       string            `json:"withdrawalHash" binding:"required"` // withdrawal
+	WithdrawalAmountOrTokenId            []string          `json:"withdrawalAmountOrTokenId" binding:"required"`
+	WithdrawalAddresses                  []string          `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalCurrencyOrNftContract      []string          `json:"withdrawalCurrencyOrNftContract" binding:"required"`
+	WithdrawalL2Minted                   []bool            `json:"withdrawalL2Minted" binding:"required"`
+	WithdrawalType                       []int             `json:"withdrawalType" binding:"required"`
+	ContractWithdrawalAddresses          []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
+	ContractWithdrawalAmounts            []string          `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalTokens             []string          `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex         int               `json:"contractWithdrawalQueueIndex"`
+	NftContractWithdrawalAddresses       []string          `json:"nftContractWithdrawalAddresses" binding:"required"` // nft contract withdrawal
+	NftContractWithdrawalTokensIds       []string          `json:"nftContractWithdrawalTokenIds" binding:"required"`
+	NftContractWithdrawalContractAddress []string          `json:"nftContractWithdrawalContractAddress" binding:"required"`
+	NftContractWithdrawalQueueIndex      int               `json:"nftContractWithdrawalQueueIndex"`
+	NftContractWithdrawalL2Minted        []bool            `json:"nftContractWithdrawalL2Minted" binding:"required"`
+	Message                              string            `json:"message" binding:"required"` // message
+	UsersUpdated                         map[string]string `json:"usersUpdated" binding:"required"`
+	SignatureRecordedAt                  time.Time         `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt                  time.Time         `json:"settlementStartedAt" binding:"required"`
 }
 
 func main() {
@@ -220,6 +225,14 @@ func main() {
 	var cw_queue_hash []byte
 	var cw_queue_index int
 	var cw_queue_len int
+
+	nft_cw_addresses := make([]string, 0)
+	nft_cw_token_ids := make([]string, 0)
+	nft_cw_amounts := make([]string, 0)
+	var nft_cw_queue_hash []byte
+	var nft_cw_queue_index int
+	var nft_cw_queue_len int
+	nft_cw_l2_minted := make([]bool, 0)
 	var ok bool
 
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -240,28 +253,6 @@ func main() {
 		message += fmt.Sprintf("%064x", queue_len+last_handled_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
 		queue_index = queue_len + last_handled_queue_index
 	}
-	if has_process.HasNFTDeposit {
-		last_handled_nft_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_nft_queue_index"].(string))
-		if err != nil {
-			fmt.Println("error in queue size")
-			return
-		}
-		nft_queue_hash, nft_queue_len, ok = QueueHash(input_transactions)
-		if !ok {
-			fmt.Println("error in getting queue hash")
-			return
-		}
-		message += fmt.Sprintf("%064x", nft_queue_len+last_handled_nft_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
-		nft_queue_index = nft_queue_len + last_handled_nft_queue_index
-	}
-	if has_process.HasWithdrawal {
-		withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok = WithdrawalHash(input_transactions)
-		if !ok {
-			fmt.Println("error in getting withdrawal_hash")
-			return
-		}
-		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
-	}
 	if has_process.HasContractWithdrawal {
 		last_handled_cw_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_cw_queue_index"].(string))
 		if err != nil {
@@ -276,6 +267,42 @@ func main() {
 		message += fmt.Sprintf("%064x", cw_queue_len+last_handled_cw_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(cw_queue_hash))
 		cw_queue_index = cw_queue_len + last_handled_cw_queue_index
 	}
+	if has_process.HasNFTDeposit {
+		last_handled_nft_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_nft_queue_index"].(string))
+		if err != nil {
+			fmt.Println("error in queue size")
+			return
+		}
+		nft_queue_hash, nft_queue_len, ok = QueueHash(input_transactions)
+		if !ok {
+			fmt.Println("error in getting queue hash")
+			return
+		}
+		message += fmt.Sprintf("%064x", nft_queue_len+last_handled_nft_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
+		nft_queue_index = nft_queue_len + last_handled_nft_queue_index
+	}
+	if has_process.HasNFTContractWithdrawal {
+		last_handled_nft_cw_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_nft_cw_queue_index"].(string))
+		if err != nil {
+			fmt.Println("error in queue size")
+			return
+		}
+		nft_cw_queue_hash, nft_cw_queue_len, nft_cw_addresses, nft_cw_amounts, nft_cw_token_ids, nft_cw_l2_minted, ok = NftWithdrawalQueueHash(input_transactions)
+		if !ok {
+			fmt.Println("error in getting cw queue hash")
+			return
+		}
+		message += fmt.Sprintf("%064x", nft_cw_queue_len+last_handled_nft_cw_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(nft_cw_queue_hash))
+		nft_cw_queue_index = nft_cw_queue_len + last_handled_nft_cw_queue_index
+	}
+	if has_process.HasWithdrawal {
+		withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, ok = WithdrawalHash(input_transactions)
+		if !ok {
+			fmt.Println("error in getting withdrawal_hash")
+			return
+		}
+		message += fmt.Sprintf("%064s", hex.EncodeToString(withdrawal_hash))
+	}
 	signature, aggregated_public_key, _, _, err := SignMessage(message, input_data.ValidatorKeys)
 	if err != nil {
 		fmt.Println(err)
@@ -285,29 +312,34 @@ func main() {
 	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()
 	response := SettlementRequest{
-		SettlementId:                    uint(input_data.MetaData["settlement_id"].(float64)),
-		Root:                            hex.EncodeToString(new_tree_root),
-		AggregatedSignature:             signature,
-		AggregatedPublicKeyComponents:   aggregated_public_key,
-		Message:                         message,
-		BlockNumber:                     bn_str,
-		SignatureRecordedAt:             signature_recorded_at,
-		SettlementStartedAt:             settlement_started_at,
-		QueueHash:                       "0x" + hex.EncodeToString(queue_hash),
-		QueueIndex:                      queue_index,
-		NftQueueHash:                    "0x" + hex.EncodeToString(nft_queue_hash),
-		NftQueueIndex:                   nft_queue_index,
-		WithdrawalHash:                  "0x" + hex.EncodeToString(withdrawal_hash),
-		WithdrawalAmountOrTokenId:       withdrawal_amounts_or_token_id,
-		WithdrawalAddresses:             withdrawal_addresses,
-		WithdrawalCurrencyOrNftContract: withdrawal_currency_or_nft_contract,
-		WithdrawalL2Minted:              withdrawal_l2_minted,
-		WithdrawalType:                  withdrawal_type,
-		ContractWithdrawalAddresses:     cw_addresses,
-		ContractWithdrawalQueueIndex:    cw_queue_index,
-		ContractWithdrawalAmounts:       cw_amounts,
-		ContractWithdrawalTokens:        cw_token_ids,
-		UsersUpdated:                    users_updated,
+		SettlementId:                         uint(input_data.MetaData["settlement_id"].(float64)),
+		Root:                                 hex.EncodeToString(new_tree_root),
+		AggregatedSignature:                  signature,
+		AggregatedPublicKeyComponents:        aggregated_public_key,
+		Message:                              message,
+		BlockNumber:                          bn_str,
+		SignatureRecordedAt:                  signature_recorded_at,
+		SettlementStartedAt:                  settlement_started_at,
+		QueueHash:                            "0x" + hex.EncodeToString(queue_hash),
+		QueueIndex:                           queue_index,
+		NftQueueHash:                         "0x" + hex.EncodeToString(nft_queue_hash),
+		NftQueueIndex:                        nft_queue_index,
+		WithdrawalHash:                       "0x" + hex.EncodeToString(withdrawal_hash),
+		WithdrawalAmountOrTokenId:            withdrawal_amounts_or_token_id,
+		WithdrawalAddresses:                  withdrawal_addresses,
+		WithdrawalCurrencyOrNftContract:      withdrawal_currency_or_nft_contract,
+		WithdrawalL2Minted:                   withdrawal_l2_minted,
+		WithdrawalType:                       withdrawal_type,
+		ContractWithdrawalAddresses:          cw_addresses,
+		ContractWithdrawalQueueIndex:         cw_queue_index,
+		ContractWithdrawalAmounts:            cw_amounts,
+		ContractWithdrawalTokens:             cw_token_ids,
+		NftContractWithdrawalAddresses:       nft_cw_addresses,
+		NftContractWithdrawalQueueIndex:      nft_cw_queue_index,
+		NftContractWithdrawalTokensIds:       nft_cw_amounts,
+		NftContractWithdrawalContractAddress: nft_cw_token_ids,
+		NftContractWithdrawalL2Minted:        nft_cw_l2_minted,
+		UsersUpdated:                         users_updated,
 	}
 	PrettyPrint("response", response)
 

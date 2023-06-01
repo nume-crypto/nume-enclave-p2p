@@ -21,6 +21,19 @@ func QueueItemHash(address string, currency string, amountOrNftTokenId string) (
 	return hash, true
 }
 
+func NftQueueItemHash(address string, currency string, amountOrNftTokenId string, l2_minted bool) ([]byte, bool) {
+	hash := solsha3.SoliditySHA3(
+		[]string{"address", "address", "uint256", "bool"},
+		[]interface{}{
+			address,
+			currency,
+			amountOrNftTokenId,
+			l2_minted,
+		},
+	)
+	return hash, true
+}
+
 func QueueHash(queue []Transaction) ([]byte, int, bool) {
 	var queue_hash []byte
 
@@ -140,4 +153,44 @@ func WithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, 
 		values,
 	)
 	return queue_hash, len(addresses), addresses, amounts, tokens, true
+}
+
+func NftWithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []string, []string, []bool, bool) {
+	var queue_hash []byte
+	var amounts []string
+	var addresses []string
+	var tokens []string
+	var l2_minted []bool
+
+	var valid_queue [][]byte
+	for i := 0; i < len(queue); i++ {
+		if queue[i].Type == "nft_contract_withdrawal" {
+			cb, ok := NftQueueItemHash(queue[i].To, queue[i].CurrencyOrNftContractAddress, queue[i].AmountOrNftTokenId, queue[i].L2Minted)
+			if !ok {
+				return queue_hash, 0, addresses, amounts, tokens, l2_minted, ok
+			}
+			if queue[i].IsInvalid {
+				zero := new(big.Int).SetUint64(0)
+				valid_queue = append(valid_queue, zero.Bytes())
+			} else {
+				valid_queue = append(valid_queue, cb)
+			}
+			addresses = append(addresses, queue[i].To)
+			amounts = append(amounts, queue[i].AmountOrNftTokenId)
+			tokens = append(tokens, queue[i].CurrencyOrNftContractAddress)
+			l2_minted = append(l2_minted, queue[i].L2Minted)
+		}
+	}
+	types := []string{}
+	values := []interface{}{}
+	for _, item := range valid_queue {
+		fmt.Println("item", hex.EncodeToString(item))
+		types = append(types, "uint256")
+		values = append(values, new(big.Int).SetBytes(item))
+	}
+	queue_hash = solsha3.SoliditySHA3(
+		types,
+		values,
+	)
+	return queue_hash, len(addresses), addresses, amounts, tokens, l2_minted, true
 }
