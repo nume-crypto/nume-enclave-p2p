@@ -11,11 +11,13 @@ import (
 	"time"
 
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
+	progressbar "github.com/schollz/progressbar/v3"
 )
 
 type SettlementRequest struct {
 	SettlementId                         uint              `json:"settlementId" binding:"required"`
 	Root                                 string            `json:"root" binding:"required"`
+	NftRoot                              string            `json:"nftRoot" binding:"required"`
 	AggregatedSignature                  string            `json:"aggregatedSignature" binding:"required"`
 	AggregatedPublicKeyComponents        []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
 	BlockNumber                          string            `json:"blockNumber" binding:"required"`
@@ -64,26 +66,58 @@ func main() {
 		fmt.Println("error in max_num_users")
 		return
 	}
+	max_num_collections, err := strconv.Atoi(input_data.MetaData["max_num_collections"].(string))
+	if err != nil {
+		fmt.Println("error in max_num_collections")
+		return
+	}
+	var nft_collection_data = make([][]byte, max_num_collections)
+	nft_zero_hash := solsha3.SoliditySHA3(
+		[]string{"address", "address", "bytes32"},
+		[]interface{}{
+			"0x0000000000000000000000000000000000000000",
+			"0x0000000000000000000000000000000000000000",
+			"0x0000000000000000000000000000000000000000",
+		},
+	)
+	for i := 0; i < len(input_data.OldNftCollections); i++ {
+		meta_hash := "0x0000000000000000000000000000000000000000"
+		hash := solsha3.SoliditySHA3(
+			[]string{"address", "address", "bytes32"},
+			[]interface{}{
+				input_data.OldNftCollections[i]["Owner"],
+				input_data.OldNftCollections[i]["ContractAddress"],
+				meta_hash,
+			},
+		)
+		nft_collection_data[i] = hash
+	}
+	for i := len(input_data.OldNftCollections); i < max_num_collections; i++ {
+		nft_collection_data[i] = nft_zero_hash
+	}
+	nft_collection_tree := NewMerkleTree(nft_collection_data)
+
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
 	zero_hash := solsha3.SoliditySHA3(
-		[]string{"address", "uint256", "bytes32", "uint256"},
+		[]string{"address", "uint256", "uint256"},
 		[]interface{}{
 			"0x0000000000000000000000000000000000000000",
 			"0",
-			"0x0000000000000000000000000000000000000000",
 			"0",
 		},
 	)
 	for i := 0; i < max_num_balances; i++ {
 		empty_balances_data[i] = zero_hash
 	}
+	bar := progressbar.Default(int64(max_num_users))
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
 	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
 		go func(i int, u interface{}) {
+			bar.Add(1)
 			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.OldUserBalanceOrder[u.(string)], max_num_balances)
 			if !ok {
 				fmt.Println("error in getting balances root")
@@ -102,6 +136,7 @@ func main() {
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
+			bar.Add(1)
 			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0)
 			prev_val_hash[i] = leaf
 			wg.Done()
@@ -135,7 +170,7 @@ func main() {
 		}
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies)
+	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, input_data.NewNftCollections)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -153,6 +188,19 @@ func main() {
 		}
 	}
 
+	for i := len(input_data.OldNftCollections); i < len(input_data.NewNftCollections); i++ {
+		meta_hash := "0x0000000000000000000000000000000000000000"
+		hash := solsha3.SoliditySHA3(
+			[]string{"address", "address", "bytes32"},
+			[]interface{}{
+				input_data.OldNftCollections[i]["Owner"],
+				input_data.OldNftCollections[i]["ContractAddress"],
+				meta_hash,
+			},
+		)
+		nft_collection_data[i] = hash
+	}
+
 	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
 		PrettyPrint("new_balances", new_balances)
@@ -163,6 +211,8 @@ func main() {
 	bn := int(input_data.MetaData["block_number"].(float64))
 	users_updated := make(map[string]string)
 	var prev_tree_root []byte
+	var prev_ctree_root []byte
+	prev_ctree_root = append(prev_ctree_root, nft_collection_tree.Root...)
 	prev_tree_root = append(prev_tree_root, tree.Root...)
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
@@ -202,6 +252,8 @@ func main() {
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
 	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
+	var new_ctree_root []byte
+	new_ctree_root = append(new_ctree_root, nft_collection_tree.Root...)
 
 	message := ""
 	var queue_hash []byte
@@ -238,7 +290,7 @@ func main() {
 	md5_sum_str = "0000000000000000000000000000000000000000000000000000000000000000"
 	md5_leaf_data_str = "0000000000000000000000000000000000000000000000000000000000000000"
 
-	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn)
+	message = hex.EncodeToString(prev_tree_root) + hex.EncodeToString(new_tree_root) + fmt.Sprintf("%064s", md5_sum_str) + fmt.Sprintf("%064x", bn) + hex.EncodeToString(prev_ctree_root) + hex.EncodeToString(new_ctree_root)
 	if has_process.HasDeposit {
 		last_handled_queue_index, err := strconv.Atoi(input_data.MetaData["last_handled_queue_index"].(string))
 		if err != nil {
@@ -314,6 +366,7 @@ func main() {
 	response := SettlementRequest{
 		SettlementId:                         uint(input_data.MetaData["settlement_id"].(float64)),
 		Root:                                 hex.EncodeToString(new_tree_root),
+		NftRoot:                              hex.EncodeToString(new_ctree_root),
 		AggregatedSignature:                  signature,
 		AggregatedPublicKeyComponents:        aggregated_public_key,
 		Message:                              message,

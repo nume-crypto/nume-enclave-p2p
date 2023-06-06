@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -79,43 +80,46 @@ func MapsEqual(m1, m2 map[string]string) bool {
 func GetBalancesRoot(balances map[string]string, user_balance_order []string, max_num_balances int) (string, bool) {
 	balances_tree := &MerkleTree{}
 	var balances_data = make([][]byte, max_num_balances)
+	var wg sync.WaitGroup
+	zero_hash := solsha3.SoliditySHA3(
+		[]string{"address", "uint256", "bytes32", "uint256"},
+		[]interface{}{
+			"0x0000000000000000000000000000000000000000",
+			"0",
+			"0x0000000000000000000000000000000000000000",
+			"0",
+		},
+	)
 	for i := 0; i < max_num_balances; i++ {
-		if i < len(balances) && i < len(user_balance_order) {
-			amt_or_token_id := balances[user_balance_order[i]]
-			currency_or_contract := user_balance_order[i]
-			ctype := "0"
-			if len(user_balance_order[i]) > 42 {
-				amt_or_token_id = strings.Split(user_balance_order[i], "-")[1]
-				currency_or_contract = strings.Split(user_balance_order[i], "-")[0]
-				ctype = "1"
+		wg.Add(1)
+		go func(i int) {
+			if i < len(balances) && i < len(user_balance_order) {
+				amt_or_token_id := balances[user_balance_order[i]]
+				currency_or_contract := user_balance_order[i]
+				ctype := "0"
+				if len(user_balance_order[i]) > 42 {
+					amt_or_token_id = strings.Split(user_balance_order[i], "-")[1]
+					currency_or_contract = strings.Split(user_balance_order[i], "-")[0]
+					ctype = "1"
+				}
+				cb2, _ := new(big.Int).SetString(amt_or_token_id, 10)
+				hash := solsha3.SoliditySHA3(
+					[]string{"address", "uint256", "bytes32", "uint256"},
+					[]interface{}{
+						currency_or_contract,
+						cb2,
+						"0x0000000000000000000000000000000000000000",
+						ctype,
+					},
+				)
+				balances_data[i] = hash
+			} else {
+				balances_data[i] = zero_hash
 			}
-			cb2, ok := new(big.Int).SetString(amt_or_token_id, 10)
-			if !ok {
-				return "", ok
-			}
-			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256", "bytes32", "uint256"},
-				[]interface{}{
-					currency_or_contract,
-					cb2,
-					"0x0000000000000000000000000000000000000000",
-					ctype,
-				},
-			)
-			balances_data[i] = hash
-		} else {
-			hash := solsha3.SoliditySHA3(
-				[]string{"address", "uint256", "bytes32", "uint256"},
-				[]interface{}{
-					"0x0000000000000000000000000000000000000000",
-					"0",
-					"0x0000000000000000000000000000000000000000",
-					"0",
-				},
-			)
-			balances_data[i] = hash
-		}
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 	balances_tree = NewMerkleTree(balances_data)
 	return hex.EncodeToString(balances_tree.Root), true
 }

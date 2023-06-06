@@ -59,6 +59,8 @@ type InputData struct {
 	Transactions         []interface{}
 	ValidatorKeys        map[string]ValidatorKeys
 	AddressPublicKeyData map[string]string
+	NewNftCollections    []map[string]interface{}
+	OldNftCollections    []map[string]interface{}
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -129,6 +131,24 @@ func GetData(path string) (InputData, string, error) {
 		return input_data, "", err
 	}
 	err = json.Unmarshal(plan, &input_data.AddressPublicKeyData)
+	if err != nil {
+		return input_data, "", err
+	}
+
+	plan, err = os.ReadFile(path + "/new_nft_collections.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.NewNftCollections)
+	if err != nil {
+		return input_data, "", err
+	}
+
+	plan, err = os.ReadFile(path + "/prev_nft_collections.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.OldNftCollections)
 	if err != nil {
 		return input_data, "", err
 	}

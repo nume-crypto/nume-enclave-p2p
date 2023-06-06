@@ -58,9 +58,13 @@ type HasProcess struct {
 	HasNFTContractWithdrawal bool
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
+func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
 	users_updated_map := make(map[string]bool)
 	user_nonce_tracker := make(map[string]uint64)
+	nft_collections_map := make(map[string]map[string]interface{})
+	for _, nft_collection := range nft_collections {
+		nft_collections_map[nft_collection["ContractAddress"].(string)] = nft_collection
+	}
 	has_process := HasProcess{}
 	for i, tx := range transactions {
 		var transaction Transaction
@@ -131,6 +135,32 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
 			}
 		case "nft_mint":
+			if _, ok := nft_collections_map[transaction.CurrencyOrNftContractAddress]; !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection not found")
+			}
+			mint_end_specifed, ok := new(big.Int).SetString(nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintEnd"].(string), 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection mint end is not valid")
+			}
+			mint_start_specifed, ok := new(big.Int).SetString(nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintStart"].(string), 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection mint end is not valid")
+			}
+			token_id, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
+			if !ok {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft token id is not valid")
+			}
+			if mint_end_specifed.Cmp(big.NewInt(0)) == 1 && mint_end_specifed.Cmp(token_id) != 1 {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection token id should be less than mint end")
+			}
+			if mint_start_specifed.Cmp(token_id) != -1 {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection token id should be greater than mint start")
+			}
+			for _, v := range nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintUsers"].([]interface{}) {
+				if v.(string) == transaction.From {
+					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("user does not have minting rights")
+				}
+			}
 			users_updated_map[transaction.To] = true
 			if _, ok := state_balances[transaction.To]; ok {
 				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"

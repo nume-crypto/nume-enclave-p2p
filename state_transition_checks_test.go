@@ -84,7 +84,8 @@ func TestTransitionState(t *testing.T) {
 	for _, currency := range meta_data["currencies"].([]interface{}) {
 		currencies = append(currencies, currency.(string))
 	}
-	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies)
+	nft_collections := make([]map[string]interface{}, 0)
+	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies, nft_collections)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return
