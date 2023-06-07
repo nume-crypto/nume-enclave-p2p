@@ -42,6 +42,7 @@ type SettlementRequest struct {
 	NftContractWithdrawalL2Minted        []bool            `json:"nftContractWithdrawalL2Minted" binding:"required"`
 	Message                              string            `json:"message" binding:"required"` // message
 	UsersUpdated                         map[string]string `json:"usersUpdated" binding:"required"`
+	NftCollectionsCreated                map[int]string    `json:"nftCollectionsCreated" binding:"required"`
 	SignatureRecordedAt                  time.Time         `json:"signatureRecordedAt" binding:"required"`
 	SettlementStartedAt                  time.Time         `json:"settlementStartedAt" binding:"required"`
 }
@@ -81,12 +82,29 @@ func main() {
 		},
 	)
 	for i := 0; i < len(input_data.OldNftCollections); i++ {
-		meta_hash := "0x0000000000000000000000000000000000000000"
+		types := []string{}
+		values := []interface{}{}
+		for _, t := range input_data.NewNftCollections[i]["MintUsers"].([]interface{}) {
+			types = append(types, "address")
+			values = append(values, t)
+		}
+		mint_users_hash := solsha3.SoliditySHA3(
+			types,
+			values)
+		meta_hash := solsha3.SoliditySHA3(
+			[]string{"uint256", "uint256", "bytes32", "bytes32"},
+			[]interface{}{
+				input_data.NewNftCollections[i]["MintStart"],
+				input_data.NewNftCollections[i]["MintEnd"],
+				solsha3.SoliditySHA3("string", input_data.NewNftCollections[i]["BaseUri"]),
+				mint_users_hash,
+			},
+		)
 		hash := solsha3.SoliditySHA3(
 			[]string{"address", "address", "bytes32"},
 			[]interface{}{
-				input_data.OldNftCollections[i]["Owner"],
-				input_data.OldNftCollections[i]["ContractAddress"],
+				input_data.NewNftCollections[i]["Owner"],
+				input_data.NewNftCollections[i]["ContractAddress"],
 				meta_hash,
 			},
 		)
@@ -188,19 +206,6 @@ func main() {
 		}
 	}
 
-	for i := len(input_data.OldNftCollections); i < len(input_data.NewNftCollections); i++ {
-		meta_hash := "0x0000000000000000000000000000000000000000"
-		hash := solsha3.SoliditySHA3(
-			[]string{"address", "address", "bytes32"},
-			[]interface{}{
-				input_data.OldNftCollections[i]["Owner"],
-				input_data.OldNftCollections[i]["ContractAddress"],
-				meta_hash,
-			},
-		)
-		nft_collection_data[i] = hash
-	}
-
 	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
 		PrettyPrint("new_balances", new_balances)
@@ -228,6 +233,38 @@ func main() {
 		}
 		tree.UpdateLeaf(i, hex.EncodeToString(leaf))
 	}
+	updated_ntf_collections := make(map[int]string)
+	for i := len(input_data.OldNftCollections); i < len(input_data.NewNftCollections); i++ {
+		types := []string{}
+		values := []interface{}{}
+		for _, t := range input_data.NewNftCollections[i]["MintUsers"].([]interface{}) {
+			types = append(types, "address")
+			values = append(values, t)
+		}
+		mint_users_hash := solsha3.SoliditySHA3(
+			types,
+			values)
+		meta_hash := solsha3.SoliditySHA3(
+			[]string{"uint256", "uint256", "bytes32", "bytes32"},
+			[]interface{}{
+				input_data.NewNftCollections[i]["MintStart"],
+				input_data.NewNftCollections[i]["MintEnd"],
+				solsha3.SoliditySHA3("string", input_data.NewNftCollections[i]["BaseUri"]),
+				mint_users_hash,
+			},
+		)
+		hash := solsha3.SoliditySHA3(
+			[]string{"address", "address", "bytes32"},
+			[]interface{}{
+				input_data.NewNftCollections[i]["Owner"],
+				input_data.NewNftCollections[i]["ContractAddress"],
+				meta_hash,
+			},
+		)
+		nft_collection_tree.UpdateLeaf(i, hex.EncodeToString(hash))
+		updated_ntf_collections[i] = hex.EncodeToString(hash)
+	}
+
 	// find leaves and upload
 	leafMap := make(map[int]string)
 	for i := 0; i < len(tree.Nodes[0]); i++ {
@@ -251,9 +288,9 @@ func main() {
 
 	var new_tree_root []byte
 	new_tree_root = append(new_tree_root, tree.Root...)
-	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn)
 	var new_ctree_root []byte
 	new_ctree_root = append(new_ctree_root, nft_collection_tree.Root...)
+	fmt.Println(hex.EncodeToString(prev_tree_root), hex.EncodeToString(new_tree_root), md5_sum_str, bn, hex.EncodeToString(prev_ctree_root), hex.EncodeToString(new_ctree_root))
 
 	message := ""
 	var queue_hash []byte
@@ -393,6 +430,7 @@ func main() {
 		NftContractWithdrawalContractAddress: nft_cw_token_ids,
 		NftContractWithdrawalL2Minted:        nft_cw_l2_minted,
 		UsersUpdated:                         users_updated,
+		NftCollectionsCreated:                updated_ntf_collections,
 	}
 	PrettyPrint("response", response)
 
