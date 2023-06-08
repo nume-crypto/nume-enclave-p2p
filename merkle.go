@@ -123,6 +123,56 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 	return &tree
 }
 
+func NewMerkleTreeSync(data [][]byte) *MerkleTree {
+	var tree MerkleTree
+
+	if len(data)%2 != 0 {
+		data = append(data, data[len(data)-1])
+	}
+
+	merkle_tree_height := int(math.Log2(float64(len(data)))) + 1
+	var merkle_tree_org = make([][]MerkleNode, merkle_tree_height)
+	leaves_in_level := len(data)
+	for i := range merkle_tree_org {
+		merkle_tree_org[i] = make([]MerkleNode, leaves_in_level)
+		leaves_in_level /= 2
+	}
+
+	var nodes []MerkleNode = make([]MerkleNode, len(data))
+	for i, d := range data {
+		node := NewMerkleNode(nil, nil, d)
+		nodes[i] = *node
+		merkle_tree_org[0][i] = *node
+	}
+	leaves_in_level = len(data)
+	for i := 1; i < merkle_tree_height; i++ {
+		for j := 0; j < leaves_in_level-1; j += 2 {
+			if i == 0 {
+				node1 := &nodes[j]
+				node2 := &nodes[j]
+				if j+1 < leaves_in_level {
+					node2 = &nodes[j+1]
+				}
+				node := NewMerkleNode(node1, node2, nil)
+				merkle_tree_org[i][j/2] = *node
+			} else {
+				node1 := &merkle_tree_org[i-1][j]
+				node2 := &merkle_tree_org[i-1][j]
+				if j+1 < leaves_in_level {
+					node2 = &merkle_tree_org[i-1][j+1]
+				}
+				node := NewMerkleNode(node1, node2, nil)
+				merkle_tree_org[i][j/2] = *node
+			}
+		}
+		leaves_in_level /= 2
+	}
+	tree.Nodes = merkle_tree_org
+	tree.Root = merkle_tree_org[merkle_tree_height-1][0].Data[:]
+	tree.height = merkle_tree_height
+	return &tree
+}
+
 func (tree MerkleTree) Proof(index int) ([][]byte, []int64) {
 	var proof [][]byte
 	var helper []int64

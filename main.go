@@ -129,14 +129,13 @@ func main() {
 	for i := 0; i < max_num_balances; i++ {
 		empty_balances_data[i] = zero_hash
 	}
-	bar := progressbar.Default(int64(max_num_users))
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
 	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
+	ordered_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
 		go func(i int, u interface{}) {
-			bar.Add(1)
 			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.OldUserBalanceOrder[u.(string)], max_num_balances)
 			if !ok {
 				fmt.Println("error in getting balances root")
@@ -149,20 +148,25 @@ func main() {
 			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce, input_data.UserListerNonce[u.(string)])
 			prev_val_hash[i] = leaf
 			wg.Done()
+			ordered_bar.Add(1)
 		}(i, u)
 	}
 	wg.Wait()
+	empty_bar := progressbar.Default(int64(max_num_users - len(input_data.OldUserBalances)))
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
-			bar.Add(1)
 			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0, []uint{})
 			prev_val_hash[i] = leaf
 			wg.Done()
+			empty_bar.Add(1)
 		}(i)
 	}
 	wg.Wait()
 	tree := NewMerkleTree(prev_val_hash)
+	tree_1 := NewMerkleTreeSync(prev_val_hash)
+	fmt.Println("tree 1 root", hex.EncodeToString(tree_1.Root))
+	fmt.Println("tree 2 root", hex.EncodeToString(tree.Root))
 	currencies := []string{}
 	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
 		currencies = append(currencies, c.(string))
