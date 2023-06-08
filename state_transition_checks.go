@@ -58,7 +58,26 @@ type HasProcess struct {
 	HasNFTContractWithdrawal bool
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
+func binarySearch(array []uint, to_search uint) bool {
+	found := false
+	low := 0
+	high := len(array) - 1
+	for low <= high {
+		mid := (low + high) / 2
+		if array[mid] == to_search {
+			found = true
+			break
+		}
+		if array[mid] < to_search {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+	return found
+}
+
+func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}, used_lister_nonce map[string][]uint) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
 	users_updated_map := make(map[string]bool)
 	user_nonce_tracker := make(map[string]uint64)
 	nft_collections_map := make(map[string]map[string]interface{})
@@ -78,7 +97,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 					ListAmount:         t["ListAmount"].(string),
 					BuyAmount:          t["BuyAmount"].(string),
 					Currency:           t["Currency"].(string),
-					LiserNonce:         uint(t["LiserNonce"].(float64)),
+					ListerNonce:        uint(t["ListerNonce"].(float64)),
 					BuyerNonce:         uint(t["BuyerNonce"].(float64)),
 					NftTokenId:         t["NftTokenId"].(string),
 					NftContractAddress: t["NftContractAddress"].(string),
@@ -318,8 +337,16 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		}
 
 		if trade.Type == "nft_trade" {
+			if !CheckNonce(user_nonce_tracker[trade.To], uint64(trade.BuyerNonce)) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+			}
+			invalid_nonce := binarySearch(used_lister_nonce[trade.From], trade.ListerNonce)
+			if invalid_nonce {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid lister nonce for transaction number %v", i+1)
+			}
+			used_lister_nonce[trade.From] = append(used_lister_nonce[trade.From], trade.ListerNonce)
 			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
-			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.LiserNonce)))
+			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.ListerNonce)))
 			if !EthVerify(list_message, trade.ListSignature, trade.From) {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
 			}

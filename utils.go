@@ -37,14 +37,25 @@ func TimeTrack(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func GetLeafHash(address string, root string, nonce uint) []byte {
+func GetLeafHash(address string, root string, nonce uint, used_lister_nonce []uint) []byte {
+	types := []string{}
+	values := []interface{}{}
+	for _, nonce := range used_lister_nonce {
+		types = append(types, "uint256")
+		values = append(values, nonce)
+	}
+	used_lister_nonce_hash := solsha3.SoliditySHA3(types, values)
+	if len(used_lister_nonce) == 0 {
+		used_lister_nonce_hash = []byte{}
+	}
 	nonce_bi := big.NewInt(int64(nonce))
 	hash := solsha3.SoliditySHA3(
-		[]string{"address", "bytes32", "uint256"},
+		[]string{"address", "bytes32", "uint256", "bytes32"},
 		[]interface{}{
 			address,
 			root,
 			nonce_bi,
+			used_lister_nonce_hash,
 		},
 	)
 	return hash

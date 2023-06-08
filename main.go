@@ -43,6 +43,7 @@ type SettlementRequest struct {
 	Message                              string            `json:"message" binding:"required"` // message
 	UsersUpdated                         map[string]string `json:"usersUpdated" binding:"required"`
 	NftCollectionsCreated                map[int]string    `json:"nftCollectionsCreated" binding:"required"`
+	UserListerNonce                      map[string][]uint `json:"usedListerNonce" binding:"required"`
 	SignatureRecordedAt                  time.Time         `json:"signatureRecordedAt" binding:"required"`
 	SettlementStartedAt                  time.Time         `json:"settlementStartedAt" binding:"required"`
 }
@@ -145,7 +146,7 @@ func main() {
 			if old_user_nonce[u.(string)] != nil {
 				nonce = uint(old_user_nonce[u.(string)].(float64))
 			}
-			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce)
+			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce, input_data.UserListerNonce[u.(string)])
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i, u)
@@ -155,7 +156,7 @@ func main() {
 		wg.Add(1)
 		go func(i int) {
 			bar.Add(1)
-			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0)
+			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0, []uint{})
 			prev_val_hash[i] = leaf
 			wg.Done()
 		}(i)
@@ -188,7 +189,7 @@ func main() {
 		}
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, input_data.NewNftCollections)
+	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, input_data.NewNftCollections, input_data.UserListerNonce)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -225,7 +226,7 @@ func main() {
 			fmt.Println("error in getting balances root new")
 			return
 		}
-		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]))
+		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
 		if users_updated_map[u.(string)] {
 			users_updated[u.(string)] = hex.EncodeToString(leaf)
 		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
@@ -430,6 +431,7 @@ func main() {
 		NftContractWithdrawalContractAddress: nft_cw_token_ids,
 		NftContractWithdrawalL2Minted:        nft_cw_l2_minted,
 		UsersUpdated:                         users_updated,
+		UserListerNonce:                      input_data.UserListerNonce,
 		NftCollectionsCreated:                updated_ntf_collections,
 	}
 	PrettyPrint("response", response)

@@ -31,7 +31,7 @@ type Trade struct {
 	ListAmount         string
 	BuyAmount          string
 	Currency           string
-	LiserNonce         uint
+	ListerNonce        uint
 	BuyerNonce         uint
 	NftTokenId         string
 	NftContractAddress string
@@ -61,6 +61,7 @@ type InputData struct {
 	AddressPublicKeyData map[string]string
 	NewNftCollections    []map[string]interface{}
 	OldNftCollections    []map[string]interface{}
+	UserListerNonce      map[string][]uint
 }
 
 func GetData(path string) (InputData, string, error) {
@@ -149,6 +150,15 @@ func GetData(path string) (InputData, string, error) {
 		return input_data, "", err
 	}
 	err = json.Unmarshal(plan, &input_data.OldNftCollections)
+	if err != nil {
+		return input_data, "", err
+	}
+
+	plan, err = os.ReadFile(path + "/used_lister_nonce.json")
+	if err != nil {
+		return input_data, "", err
+	}
+	err = json.Unmarshal(plan, &input_data.UserListerNonce)
 	if err != nil {
 		return input_data, "", err
 	}
