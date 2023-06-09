@@ -15,37 +15,37 @@ import (
 )
 
 type SettlementRequest struct {
-	SettlementId                         uint              `json:"settlementId" binding:"required"`
-	Root                                 string            `json:"root" binding:"required"`
-	NftRoot                              string            `json:"nftRoot" binding:"required"`
-	AggregatedSignature                  string            `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents        []string          `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                          string            `json:"blockNumber" binding:"required"`
-	QueueHash                            string            `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                           int               `json:"queueIndex"`
-	NftQueueHash                         string            `json:"nftQueueHash" binding:"required"` // deposit nft
-	NftQueueIndex                        int               `json:"nftQueueIndex"`
-	WithdrawalHash                       string            `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmountOrTokenId            []string          `json:"withdrawalAmountOrTokenId" binding:"required"`
-	WithdrawalAddresses                  []string          `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalCurrencyOrNftContract      []string          `json:"withdrawalCurrencyOrNftContract" binding:"required"`
-	WithdrawalL2Minted                   []bool            `json:"withdrawalL2Minted" binding:"required"`
-	WithdrawalType                       []int             `json:"withdrawalType" binding:"required"`
-	ContractWithdrawalAddresses          []string          `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts            []string          `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokens             []string          `json:"contractWithdrawalTokes" binding:"required"`
-	ContractWithdrawalQueueIndex         int               `json:"contractWithdrawalQueueIndex"`
-	NftContractWithdrawalAddresses       []string          `json:"nftContractWithdrawalAddresses" binding:"required"` // nft contract withdrawal
-	NftContractWithdrawalTokensIds       []string          `json:"nftContractWithdrawalTokenIds" binding:"required"`
-	NftContractWithdrawalContractAddress []string          `json:"nftContractWithdrawalContractAddress" binding:"required"`
-	NftContractWithdrawalQueueIndex      int               `json:"nftContractWithdrawalQueueIndex"`
-	NftContractWithdrawalL2Minted        []bool            `json:"nftContractWithdrawalL2Minted" binding:"required"`
-	Message                              string            `json:"message" binding:"required"` // message
-	UsersUpdated                         map[string]string `json:"usersUpdated" binding:"required"`
-	NftCollectionsCreated                map[int]string    `json:"nftCollectionsCreated" binding:"required"`
-	UserListerNonce                      map[string][]uint `json:"usedListerNonce" binding:"required"`
-	SignatureRecordedAt                  time.Time         `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt                  time.Time         `json:"settlementStartedAt" binding:"required"`
+	SettlementId                         uint                   `json:"settlementId" binding:"required"`
+	Root                                 string                 `json:"root" binding:"required"`
+	NftRoot                              string                 `json:"nftRoot" binding:"required"`
+	AggregatedSignature                  string                 `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents        []string               `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                          string                 `json:"blockNumber" binding:"required"`
+	QueueHash                            string                 `json:"queueHash" binding:"required"` // deposit
+	QueueIndex                           int                    `json:"queueIndex"`
+	NftQueueHash                         string                 `json:"nftQueueHash" binding:"required"` // deposit nft
+	NftQueueIndex                        int                    `json:"nftQueueIndex"`
+	WithdrawalHash                       string                 `json:"withdrawalHash" binding:"required"` // withdrawal
+	WithdrawalAmountOrTokenId            []string               `json:"withdrawalAmountOrTokenId" binding:"required"`
+	WithdrawalAddresses                  []string               `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalCurrencyOrNftContract      []string               `json:"withdrawalCurrencyOrNftContract" binding:"required"`
+	WithdrawalL2Minted                   []bool                 `json:"withdrawalL2Minted" binding:"required"`
+	WithdrawalType                       []int                  `json:"withdrawalType" binding:"required"`
+	ContractWithdrawalAddresses          []string               `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
+	ContractWithdrawalAmounts            []string               `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalTokens             []string               `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex         int                    `json:"contractWithdrawalQueueIndex"`
+	NftContractWithdrawalAddresses       []string               `json:"nftContractWithdrawalAddresses" binding:"required"` // nft contract withdrawal
+	NftContractWithdrawalTokensIds       []string               `json:"nftContractWithdrawalTokenIds" binding:"required"`
+	NftContractWithdrawalContractAddress []string               `json:"nftContractWithdrawalContractAddress" binding:"required"`
+	NftContractWithdrawalQueueIndex      int                    `json:"nftContractWithdrawalQueueIndex"`
+	NftContractWithdrawalL2Minted        []bool                 `json:"nftContractWithdrawalL2Minted" binding:"required"`
+	Message                              string                 `json:"message" binding:"required"` // message
+	UsersUpdated                         map[string]interface{} `json:"usersUpdated" binding:"required"`
+	NftCollectionsCreated                map[int]string         `json:"nftCollectionsCreated" binding:"required"`
+	UserListerNonce                      map[string][]uint      `json:"usedListerNonce" binding:"required"`
+	SignatureRecordedAt                  time.Time              `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt                  time.Time              `json:"settlementStartedAt" binding:"required"`
 }
 
 func main() {
@@ -85,7 +85,7 @@ func main() {
 	for i := 0; i < len(input_data.OldNftCollections); i++ {
 		types := []string{}
 		values := []interface{}{}
-		for _, t := range input_data.NewNftCollections[i]["MintUsers"].([]interface{}) {
+		for _, t := range input_data.OldNftCollections[i]["MintUsers"].([]interface{}) {
 			types = append(types, "address")
 			values = append(values, t)
 		}
@@ -95,17 +95,17 @@ func main() {
 		meta_hash := solsha3.SoliditySHA3(
 			[]string{"uint256", "uint256", "bytes32", "bytes32"},
 			[]interface{}{
-				input_data.NewNftCollections[i]["MintStart"],
-				input_data.NewNftCollections[i]["MintEnd"],
-				solsha3.SoliditySHA3("string", input_data.NewNftCollections[i]["BaseUri"]),
+				input_data.OldNftCollections[i]["MintStart"],
+				input_data.OldNftCollections[i]["MintEnd"],
+				solsha3.SoliditySHA3("string", input_data.OldNftCollections[i]["BaseUri"]),
 				mint_users_hash,
 			},
 		)
 		hash := solsha3.SoliditySHA3(
 			[]string{"address", "address", "bytes32"},
 			[]interface{}{
-				input_data.NewNftCollections[i]["Owner"],
-				input_data.NewNftCollections[i]["ContractAddress"],
+				input_data.OldNftCollections[i]["Owner"],
+				input_data.OldNftCollections[i]["ContractAddress"],
 				meta_hash,
 			},
 		)
@@ -129,12 +129,21 @@ func main() {
 	for i := 0; i < max_num_balances; i++ {
 		empty_balances_data[i] = zero_hash
 	}
+
+	// MAX_GO_ROUTINES := 4000
+	// sem := make(chan int, MAX_GO_ROUTINES)
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
 	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
 	ordered_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
+		if i > len(input_data.OldUserBalances) {
+			break
+		}
 		wg.Add(1)
+		// if i > 4000 {
+		// 	sem <- 1
+		// }
 		go func(i int, u interface{}) {
 			balances_root, ok := GetBalancesRoot(input_data.OldUserBalances[u.(string)], input_data.OldUserBalanceOrder[u.(string)], max_num_balances)
 			if !ok {
@@ -149,6 +158,9 @@ func main() {
 			prev_val_hash[i] = leaf
 			wg.Done()
 			ordered_bar.Add(1)
+			// if i > 4000 {
+			// 	<-sem
+			// }
 		}(i, u)
 	}
 	wg.Wait()
@@ -163,14 +175,13 @@ func main() {
 		}(i)
 	}
 	wg.Wait()
+	prev_acc_tree_time := time.Now()
 	tree := NewMerkleTree(prev_val_hash)
-	tree_1 := NewMerkleTreeSync(prev_val_hash)
-	fmt.Println("tree 1 root", hex.EncodeToString(tree_1.Root))
-	fmt.Println("tree 2 root", hex.EncodeToString(tree.Root))
 	currencies := []string{}
 	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
 		currencies = append(currencies, c.(string))
 	}
+	fmt.Println("prev acc tree time", time.Since(prev_acc_tree_time))
 	input_transactions := []Transaction{}
 	for _, tx := range input_data.Transactions {
 		if t, ok := tx.(map[string]interface{}); ok {
@@ -193,7 +204,7 @@ func main() {
 		}
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, input_data.NewNftCollections, input_data.UserListerNonce)
+	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
@@ -219,25 +230,35 @@ func main() {
 		return
 	}
 	bn := int(input_data.MetaData["block_number"].(float64))
-	users_updated := make(map[string]string)
+	// var users_updated map[string]string
+	var sm sync.Map
 	var prev_tree_root []byte
 	var prev_ctree_root []byte
 	prev_ctree_root = append(prev_ctree_root, nft_collection_tree.Root...)
 	prev_tree_root = append(prev_tree_root, tree.Root...)
+	new_acc_tree_time := time.Now()
+	update_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
-		if !ok {
-			fmt.Println("error in getting balances root new")
-			return
-		}
-		leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
-		if users_updated_map[u.(string)] {
-			users_updated[u.(string)] = hex.EncodeToString(leaf)
-		} else if !bytes.Equal(leaf, prev_val_hash[i]) {
-			users_updated[u.(string)] = hex.EncodeToString(leaf)
-		}
-		tree.UpdateLeaf(i, hex.EncodeToString(leaf))
+		wg.Add(1)
+		go func(i int, u interface{}) {
+			balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
+			if !ok {
+				fmt.Println("error in getting balances root new")
+				return
+			}
+			leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
+			if users_updated_map[u.(string)] {
+				sm.Store(u.(string), hex.EncodeToString(leaf))
+			} else if !bytes.Equal(leaf, prev_val_hash[i]) {
+				sm.Store(u.(string), hex.EncodeToString(leaf))
+			}
+			tree.UpdateLeaf(i, hex.EncodeToString(leaf))
+			wg.Done()
+			update_bar.Add(1)
+		}(i, u)
 	}
+	wg.Wait()
+	fmt.Println("new acc tree time", time.Since(new_acc_tree_time))
 	updated_ntf_collections := make(map[int]string)
 	for i := len(input_data.OldNftCollections); i < len(input_data.NewNftCollections); i++ {
 		types := []string{}
@@ -402,6 +423,11 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	users_updated := map[string]interface{}{}
+	sm.Range(func(key, value interface{}) bool {
+		users_updated[fmt.Sprint(key)] = value
+		return true
+	})
 
 	bn_str := strconv.Itoa(bn)
 	signature_recorded_at := time.Now()

@@ -62,6 +62,7 @@ func GetLeafHash(address string, root string, nonce uint, used_lister_nonce []ui
 }
 
 func NestedMapsEqual(m1, m2 map[string]map[string]string) bool {
+	defer TimeTrack(time.Now(), "NestedMapsEqual")
 	if len(m1) != len(m2) {
 		fmt.Println("len(m1)", len(m1), "len(m2)", len(m2))
 		return false

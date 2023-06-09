@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
+
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 func CheckNonce(last_nonce, current_nonce uint64) bool {
@@ -81,6 +85,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 	users_updated_map := make(map[string]bool)
 	user_nonce_tracker := make(map[string]uint64)
 	nft_collections_map := make(map[string]map[string]interface{})
+	defer TimeTrack(time.Now(), "TransitionState")
 	for _, nft_collection := range nft_collections {
 		nft_collections_map[nft_collection["ContractAddress"].(string)] = nft_collection
 	}
@@ -154,6 +159,13 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				state_balances[transaction.To][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = "yes"
 			}
 		case "nft_mint":
+			message := solsha3.SoliditySHA3(
+				[]string{"address", "address"},
+				[]interface{}{transaction.CurrencyOrNftContractAddress, transaction.To},
+			)
+			if !EthVerify(hex.EncodeToString(message), transaction.Signature, transaction.From) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
+			}
 			if _, ok := nft_collections_map[transaction.CurrencyOrNftContractAddress]; !ok {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection not found")
 			}
