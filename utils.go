@@ -94,11 +94,10 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 	var balances_data = make([][]byte, max_num_balances)
 	var wg sync.WaitGroup
 	zero_hash := solsha3.SoliditySHA3(
-		[]string{"address", "uint256", "bytes32", "uint256"},
+		[]string{"address", "uint256", "uint256"},
 		[]interface{}{
 			"0x0000000000000000000000000000000000000000",
 			"0",
-			"0x0000000000000000000000000000000000000000",
 			"0",
 		},
 	)
@@ -116,11 +115,10 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 				}
 				cb2, _ := new(big.Int).SetString(amt_or_token_id, 10)
 				hash := solsha3.SoliditySHA3(
-					[]string{"address", "uint256", "bytes32", "uint256"},
+					[]string{"address", "uint256", "uint256"},
 					[]interface{}{
 						currency_or_contract,
 						cb2,
-						"0x0000000000000000000000000000000000000000",
 						ctype,
 					},
 				)

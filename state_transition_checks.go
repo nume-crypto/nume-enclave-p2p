@@ -170,8 +170,8 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				[]string{"address", "address"},
 				[]interface{}{transaction.CurrencyOrNftContractAddress, transaction.To},
 			)
-			if !EthVerify(hex.EncodeToString(message), transaction.Signature, transaction.From) {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
+			if !EthVerify(hex.EncodeToString(message), transaction.Signature, transaction.To) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid mint signature")
 			}
 			if _, ok := nft_collections_map[transaction.CurrencyOrNftContractAddress]; !ok {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nft collection not found")
@@ -290,23 +290,24 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		// Handle Nume Fees wherever applicable
 		var nume_fees *big.Int
 		var ok bool
+		var error_in_fee error
 		if trade.Type == "nft_trade" {
 			nume_fees, ok = new(big.Int).SetString(trade.NumeFees, 10)
 			if !ok {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 			}
-			state_balances, has_process, users_updated_map, user_nonce_tracker, err := DeductNumeFeesForNftTrade(state_balances, trade, fee_currency_token, has_process, users_updated_map, user_nonce_tracker, nume_fees, nume_address)
-			if err != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, err
+			state_balances, error_in_fee = DeductNumeFeesForNftTrade(state_balances, trade, fee_currency_token, nume_fees, nume_address)
+			if error_in_fee != nil {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
 			}
-		} else if transaction.Type != "" {
+		} else if transaction.Type == "transfer" || transaction.Type == "nft_transfer" || transaction.Type == "nft_mint" {
 			nume_fees, ok = new(big.Int).SetString(transaction.NumeFees, 10)
 			if !ok {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 			}
-			state_balances, has_process, users_updated_map, user_nonce_tracker, err := DeductNumeFees(state_balances, transaction, fee_currency_token, has_process, users_updated_map, user_nonce_tracker, nume_fees, nume_address)
-			if err != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, err
+			state_balances, error_in_fee = DeductNumeFees(state_balances, transaction, fee_currency_token, nume_fees, nume_address)
+			if error_in_fee != nil {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
 			}
 		}
 		switch transaction.Type {
@@ -515,49 +516,49 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				state_balances[trade.From] = make(map[string]string)
 				state_balances[trade.From][trade.Currency] = trade.BuyAmount
 			}
-
 			// Handle ROYALTY fee
-			token_creator_address := nft_collections_map[transaction.CurrencyOrNftContractAddress]["Owner"].(string)
+			token_creator_address := nft_collections_map[trade.NftContractAddress]["Owner"].(string)
 			royalty_amount := trade.RoyaltyAmount
+			fmt.Println("royalty_amount", royalty_amount)
 			if royalty_amount != "" {
 				// Deduct from Buyer users balance
 				royalty_amount_bi, ok := new(big.Int).SetString(royalty_amount, 10)
 				if !ok {
 					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 				}
-				if _, ok := state_balances[transaction.From]; ok {
-					if _, ok := state_balances[transaction.From][transaction.CurrencyOrNftContractAddress]; ok {
-						current_balance, ok := new(big.Int).SetString(state_balances[transaction.From][transaction.CurrencyOrNftContractAddress], 10)
+				if _, ok := state_balances[trade.From]; ok {
+					if _, ok := state_balances[trade.From][trade.Currency]; ok {
+						current_balance, ok := new(big.Int).SetString(state_balances[trade.From][trade.Currency], 10)
 						if !ok {
 							return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 						}
 						new_amt := new(big.Int)
 						new_amt.Sub(current_balance, royalty_amount_bi)
-						state_balances[transaction.From][transaction.CurrencyOrNftContractAddress] = new_amt.String()
+						state_balances[trade.From][trade.Currency] = new_amt.String()
 					} else {
-						state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = "-" + royalty_amount_bi.String()
+						state_balances[trade.To][trade.Currency] = "-" + royalty_amount_bi.String()
 					}
 				} else {
-					state_balances[transaction.To] = make(map[string]string)
-					state_balances[transaction.To][transaction.CurrencyOrNftContractAddress] = "-" + royalty_amount_bi.String()
+					state_balances[trade.To] = make(map[string]string)
+					state_balances[trade.To][trade.Currency] = "-" + royalty_amount_bi.String()
 				}
 
 				// Credit at token creator balance
 				if _, ok := state_balances[token_creator_address]; ok {
-					if _, ok := state_balances[token_creator_address][transaction.CurrencyOrNftContractAddress]; ok {
-						current_balance, ok := new(big.Int).SetString(state_balances[token_creator_address][transaction.CurrencyOrNftContractAddress], 10)
+					if _, ok := state_balances[token_creator_address][trade.Currency]; ok {
+						current_balance, ok := new(big.Int).SetString(state_balances[token_creator_address][trade.Currency], 10)
 						if !ok {
 							return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
 						}
 						new_amt := new(big.Int)
 						new_amt.Add(royalty_amount_bi, current_balance)
-						state_balances[token_creator_address][transaction.CurrencyOrNftContractAddress] = new_amt.String()
+						state_balances[token_creator_address][trade.Currency] = new_amt.String()
 					} else {
-						state_balances[token_creator_address][transaction.CurrencyOrNftContractAddress] = royalty_amount_bi.String()
+						state_balances[token_creator_address][trade.Currency] = royalty_amount_bi.String()
 					}
 				} else {
 					state_balances[token_creator_address] = make(map[string]string)
-					state_balances[token_creator_address][transaction.CurrencyOrNftContractAddress] = royalty_amount_bi.String()
+					state_balances[token_creator_address][trade.Currency] = royalty_amount_bi.String()
 				}
 			}
 		}
@@ -566,23 +567,27 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 	return state_balances, has_process, users_updated_map, user_nonce_tracker, nil
 }
 
-func DeductNumeFees(state_balances map[string]map[string]string, transaction Transaction, fee_currency_token string, has_process HasProcess, users_updated_map map[string]bool, user_nonce_tracker map[string]uint64, nume_fees *big.Int, nume_address string) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
+func DeductNumeFees(state_balances map[string]map[string]string, transaction Transaction, fee_currency_token string, nume_fees *big.Int, nume_address string) (map[string]map[string]string, error) {
 	// Deduct from Sender
-	if _, ok := state_balances[transaction.From]; ok {
-		if _, ok := state_balances[transaction.From][fee_currency_token]; ok {
-			current_balance, ok := new(big.Int).SetString(state_balances[transaction.From][fee_currency_token], 10)
+	sender := transaction.From
+	if transaction.Type == "nft_mint" {
+		sender = transaction.To
+	}
+	if _, ok := state_balances[sender]; ok {
+		if _, ok := state_balances[sender][fee_currency_token]; ok {
+			current_balance, ok := new(big.Int).SetString(state_balances[sender][fee_currency_token], 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, fmt.Errorf("error converting amount to big int")
 			}
 			new_amt := new(big.Int)
 			new_amt.Sub(current_balance, nume_fees)
-			state_balances[transaction.From][fee_currency_token] = new_amt.String()
+			state_balances[sender][fee_currency_token] = new_amt.String()
 		} else {
-			state_balances[transaction.From][fee_currency_token] = "-" + nume_fees.String()
+			state_balances[sender][fee_currency_token] = "-" + nume_fees.String()
 		}
 	} else {
-		state_balances[transaction.From] = make(map[string]string)
-		state_balances[transaction.From][fee_currency_token] = "-" + nume_fees.String()
+		state_balances[sender] = make(map[string]string)
+		state_balances[sender][fee_currency_token] = "-" + nume_fees.String()
 	}
 
 	// Credit To Nume User
@@ -590,7 +595,7 @@ func DeductNumeFees(state_balances map[string]map[string]string, transaction Tra
 		if _, ok := state_balances[nume_address][fee_currency_token]; ok {
 			current_balance, ok := new(big.Int).SetString(state_balances[nume_address][fee_currency_token], 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, fmt.Errorf("error converting amount to big int")
 			}
 			new_amt := new(big.Int)
 			new_amt.Add(nume_fees, current_balance)
@@ -602,26 +607,26 @@ func DeductNumeFees(state_balances map[string]map[string]string, transaction Tra
 		state_balances[nume_address] = make(map[string]string)
 		state_balances[nume_address][fee_currency_token] = nume_fees.String()
 	}
-	return nil, HasProcess{}, nil, nil, nil
+	return state_balances, nil
 }
 
-func DeductNumeFeesForNftTrade(state_balances map[string]map[string]string, trade Trade, fee_currency_token string, has_process HasProcess, users_updated_map map[string]bool, user_nonce_tracker map[string]uint64, nume_fees *big.Int, nume_address string) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
+func DeductNumeFeesForNftTrade(state_balances map[string]map[string]string, trade Trade, fee_currency_token string, nume_fees *big.Int, nume_address string) (map[string]map[string]string, error) {
 	// Deduct from Sender
-	if _, ok := state_balances[trade.From]; ok {
-		if _, ok := state_balances[trade.From][fee_currency_token]; ok {
-			current_balance, ok := new(big.Int).SetString(state_balances[trade.From][fee_currency_token], 10)
+	if _, ok := state_balances[trade.To]; ok {
+		if _, ok := state_balances[trade.To][fee_currency_token]; ok {
+			current_balance, ok := new(big.Int).SetString(state_balances[trade.To][fee_currency_token], 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, fmt.Errorf("error converting amount to big int")
 			}
 			new_amt := new(big.Int)
 			new_amt.Sub(current_balance, nume_fees)
-			state_balances[trade.From][fee_currency_token] = new_amt.String()
+			state_balances[trade.To][fee_currency_token] = new_amt.String()
 		} else {
-			state_balances[trade.From][fee_currency_token] = "-" + nume_fees.String()
+			state_balances[trade.To][fee_currency_token] = "-" + nume_fees.String()
 		}
 	} else {
-		state_balances[trade.From] = make(map[string]string)
-		state_balances[trade.From][fee_currency_token] = "-" + nume_fees.String()
+		state_balances[trade.To] = make(map[string]string)
+		state_balances[trade.To][fee_currency_token] = "-" + nume_fees.String()
 	}
 
 	// Credit To Nume User
@@ -629,7 +634,7 @@ func DeductNumeFeesForNftTrade(state_balances map[string]map[string]string, trad
 		if _, ok := state_balances[nume_address][fee_currency_token]; ok {
 			current_balance, ok := new(big.Int).SetString(state_balances[nume_address][fee_currency_token], 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, fmt.Errorf("error converting amount to big int")
 			}
 			new_amt := new(big.Int)
 			new_amt.Add(nume_fees, current_balance)
@@ -641,5 +646,5 @@ func DeductNumeFeesForNftTrade(state_balances map[string]map[string]string, trad
 		state_balances[nume_address] = make(map[string]string)
 		state_balances[nume_address][fee_currency_token] = nume_fees.String()
 	}
-	return nil, HasProcess{}, nil, nil, nil
+	return state_balances, nil
 }

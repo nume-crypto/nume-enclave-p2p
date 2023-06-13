@@ -214,10 +214,10 @@ func main() {
 	for _, v := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if _, ok := new_balances[v.(string)]; !ok {
 			new_balances[v.(string)] = make(map[string]string)
-			new_balances[v.(string)]["0x0000000000000000000000000000000000000000"] = "0"
+			new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)] = "0"
 		} else {
-			if _, ok := new_balances[v.(string)]["0x0000000000000000000000000000000000000000"]; !ok {
-				new_balances[v.(string)]["0x0000000000000000000000000000000000000000"] = "0"
+			if _, ok := new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)]; !ok {
+				new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)] = "0"
 			}
 		}
 	}

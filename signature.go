@@ -155,15 +155,15 @@ func GetAmountAndTokenAddress(tx *types.Transaction, currencies []string) (strin
 	amount := ""
 	token_address := ""
 	to := tx.To().Hex()
-	flag := false
-	for _, currency := range currencies {
+	index := -1
+	for i, currency := range currencies {
 		if strings.EqualFold(currency, to) {
-			flag = true
+			index = i
 			break
 		}
 	}
-	if !flag {
-		return tx.Value().String(), "0x0000000000000000000000000000000000000000", tx.To().Hex(), nil
+	if index == -1 {
+		return tx.Value().String(), currencies[index], tx.To().Hex(), nil
 	}
 	if tx.Data() == nil {
 		return amount, token_address, to, errors.New("invalid data")
