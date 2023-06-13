@@ -21,6 +21,9 @@ type Transaction struct {
 	IsInvalid                    bool
 	Data                         string
 	L2Minted                     bool
+	NumeFees                     string
+	MintFees                     string
+	MintFeesToken                string
 	CreatedAt                    time.Time
 }
 
@@ -38,6 +41,8 @@ type Trade struct {
 	Type               string
 	ListSignature      string
 	BuySignature       string
+	RoyaltyAmount      string
+	NumeFees           string
 	L2Minted           bool
 	CreatedAt          time.Time
 }

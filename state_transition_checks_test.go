@@ -86,7 +86,7 @@ func TestTransitionState(t *testing.T) {
 	}
 	nft_collections := make([]map[string]interface{}, 0)
 	lister_nonce := make(map[string][]uint)
-	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies, nft_collections, lister_nonce)
+	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies, nft_collections, lister_nonce, meta_data)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return

@@ -204,7 +204,7 @@ func main() {
 		}
 	}
 	init_state_balances := input_data.OldUserBalances
-	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce)
+	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("error in transition state")
