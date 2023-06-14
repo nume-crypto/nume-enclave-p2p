@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/big"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -40,6 +41,29 @@ func TimeTrack(start time.Time, name string) {
 func GetLeafHash(address string, root string, nonce uint, used_lister_nonce []uint) []byte {
 	types := []string{}
 	values := []interface{}{}
+	optimized_used_lister_nonce := []uint{}
+	sort.Slice(used_lister_nonce, func(i, j int) bool { return used_lister_nonce[i] < used_lister_nonce[j] })
+	last_optimized_nonce := uint(0)
+	for i, nonce := range used_lister_nonce {
+		if uint(i+1) == nonce {
+			last_optimized_nonce = nonce
+			continue
+		} else {
+			if last_optimized_nonce != 0 {
+				optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
+				optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
+				last_optimized_nonce = 0
+			}
+			optimized_used_lister_nonce = append(optimized_used_lister_nonce, nonce)
+		}
+	}
+	if last_optimized_nonce != 0 {
+		optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
+		optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
+		last_optimized_nonce = 0
+	}
+	fmt.Println("optimized_used_lister_nonce", optimized_used_lister_nonce)
+
 	for _, nonce := range used_lister_nonce {
 		types = append(types, "uint256")
 		values = append(values, nonce)
