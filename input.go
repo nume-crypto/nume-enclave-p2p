@@ -90,7 +90,6 @@ func GetData(path string) (InputData, string, error) {
 	if err != nil {
 		return input_data, "", err
 	}
-
 	plan, err = os.ReadFile(path + "/new_balances.json")
 	if err != nil {
 		return input_data, "", err

@@ -1,0 +1,15 @@
+[
+    {
+        "Id": 1,
+        "Owner": "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
+        "ContractAddress": "0xedb6375347e060b055d6af9842ba8c55e3d93e3a",
+        "Name": "New NFT Collection",
+        "BaseUri": "https://ipfs.io/ipfs/QmVLbfDpBj9XxXCCgWwhshpAQE9X23skZ8SfpUPn29HhnQ",
+        "MintStart": "10",
+        "MintEnd": "100",
+        "MintUsers": [
+            "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
+            "0x447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"
+        ]
+    }
+]

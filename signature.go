@@ -310,7 +310,6 @@ func EthVerify(message string, sig string, pubkey string) bool {
 	hash := crypto.Keccak256Hash([]byte(fullMessage))
 	sb, err := hex.DecodeString(sig[2:])
 	if err != nil {
-		fmt.Println("sb err:", err)
 		return false
 	}
 

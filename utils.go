@@ -1,27 +1,17 @@
 package main
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509/pkix"
-	"encoding/asn1"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"reflect"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
-	"golang.org/x/crypto/nacl/box"
 )
 
 func PrettyPrint(text string, v interface{}) (err error) {
@@ -41,30 +31,9 @@ func TimeTrack(start time.Time, name string) {
 func GetLeafHash(address string, root string, nonce uint, used_lister_nonce []uint) []byte {
 	types := []string{}
 	values := []interface{}{}
-	optimized_used_lister_nonce := []uint{}
-	sort.Slice(used_lister_nonce, func(i, j int) bool { return used_lister_nonce[i] < used_lister_nonce[j] })
-	last_optimized_nonce := uint(0)
-	for i, nonce := range used_lister_nonce {
-		if uint(i+1) == nonce {
-			last_optimized_nonce = nonce
-			continue
-		} else {
-			if last_optimized_nonce != 0 {
-				optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
-				optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
-				last_optimized_nonce = 0
-			}
-			optimized_used_lister_nonce = append(optimized_used_lister_nonce, nonce)
-		}
-	}
-	if last_optimized_nonce != 0 {
-		optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
-		optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
-		last_optimized_nonce = 0
-	}
-	fmt.Println("optimized_used_lister_nonce", optimized_used_lister_nonce)
+	optimized_used_lister_nonce := GetOptimizedNonce(used_lister_nonce)
 
-	for _, nonce := range used_lister_nonce {
+	for _, nonce := range optimized_used_lister_nonce {
 		types = append(types, "uint256")
 		values = append(values, nonce)
 	}
@@ -158,108 +127,83 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 	return hex.EncodeToString(balances_tree.Root), true
 }
 
-// func EncryptTransactionKMSPubkey(tx *Transaction, block_number float64, public_key_hex string) (string, error) {
-// 	hashed_message := DigitalSignatureMessage(tx.From, tx.To, tx.Currency, tx.Amount, uint64(tx.Nonce), int64(block_number))
-// 	kstr2, err := hex.DecodeString(public_key_hex)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to decode public key: %w", err)
-// 	}
-
-// 	pk, err := PemToPubkey(kstr2)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to convert public key: %w", err)
-// 	}
-
-// 	message := []byte(hashed_message)
-
-// 	publicKeyEcies := ecies.ImportECDSAPublic(pk)
-
-// 	encryptedMessage, err := ecies.Encrypt(rand.Reader, publicKeyEcies, message, nil, nil)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to encrypt message: %w", err)
-// 	}
-
-// 	return hex.EncodeToString(encryptedMessage), nil
-// }
-
-var (
-	OidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
-)
-
-type PublicKeyInfo struct {
-	Raw       asn1.RawContent
-	Algorithm pkix.AlgorithmIdentifier
-	PublicKey asn1.BitString
+type HasProcess struct {
+	HasDeposit               bool
+	HasWithdrawal            bool
+	HasContractWithdrawal    bool
+	HasNFTDeposit            bool
+	HasNFTContractWithdrawal bool
 }
 
-func PemToPubkey(publicKey []byte) (*ecdsa.PublicKey, error) {
-	var pub PublicKeyInfo
-	rest, err := asn1.Unmarshal(publicKey, &pub)
-	if err != nil || len(rest) > 0 {
-		return nil, fmt.Errorf("error unmarshaling public key: %w", err)
+func updateHasProcess(has_process *HasProcess, transaction Transaction) {
+	switch transaction.Type {
+	case "deposit":
+		has_process.HasDeposit = true
+	case "withdrawal":
+		has_process.HasWithdrawal = true
+	case "contract_withdrawal":
+		has_process.HasContractWithdrawal = true
+	case "nft_deposit":
+		has_process.HasNFTDeposit = true
+	case "nft_contract_withdrawal":
+		has_process.HasNFTContractWithdrawal = true
 	}
-	if !pub.Algorithm.Algorithm.Equal(OidPublicKeyECDSA) {
-		return nil, errors.New("not a ECDSA public key")
-	}
-
-	// Convert to ecdsa.PublicKey
-	pk, err := crypto.UnmarshalPubkey(pub.PublicKey.Bytes)
-	fmt.Println("reflect.TypeOf ", reflect.TypeOf(pk.Curve))
-
-	publicKeyBytes := elliptic.Marshal(pk.Curve, pk.X, pk.Y)
-	publicKeyHex := hex.EncodeToString(publicKeyBytes)
-	fmt.Printf("ECDSA public key: %s\n", publicKeyHex)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal secp256k1 curve point: %w", err)
-	}
-
-	return pk, nil
 }
 
-func ToECDSAPub(pub []byte) *ecdsa.PublicKey {
-	if len(pub) == 0 {
-		return nil
+func verifyMintData(transaction Transaction, nft_collections_map map[string]map[string]interface{}) error {
+	{
+		message := solsha3.SoliditySHA3(
+			[]string{"address", "address"},
+			[]interface{}{transaction.CurrencyOrNftContractAddress, transaction.To},
+		)
+		if !EthVerify(hex.EncodeToString(message), transaction.Signature, transaction.To) {
+			return fmt.Errorf("invalid mint signature")
+		}
+		if _, ok := nft_collections_map[transaction.CurrencyOrNftContractAddress]; !ok {
+			return fmt.Errorf("nft collection not found")
+		}
+		mint_end_specifed, ok := new(big.Int).SetString(nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintEnd"].(string), 10)
+		if !ok {
+			return fmt.Errorf("nft collection mint end is not valid")
+		}
+		mint_start_specifed, ok := new(big.Int).SetString(nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintStart"].(string), 10)
+		if !ok {
+			return fmt.Errorf("nft collection mint end is not valid")
+		}
+		token_id, ok := new(big.Int).SetString(transaction.AmountOrNftTokenId, 10)
+		if !ok {
+			return fmt.Errorf("nft token id is not valid")
+		}
+		if mint_end_specifed.Cmp(big.NewInt(0)) == 1 && mint_end_specifed.Cmp(token_id) != 1 {
+			return fmt.Errorf("nft collection token id should be less than mint end")
+		}
+		if mint_start_specifed.Cmp(token_id) != -1 {
+			return fmt.Errorf("nft collection token id should be greater than mint start")
+		}
+		for _, v := range nft_collections_map[transaction.CurrencyOrNftContractAddress]["MintUsers"].([]interface{}) {
+			if v.(string) == transaction.From {
+				return fmt.Errorf("user does not have minting rights")
+			}
+		}
 	}
-	curve := crypto.S256()
-	x, y := elliptic.Unmarshal(curve, pub)
-	return &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
+	return nil
 }
 
-func EncryptTransactionWithPubKey(tx *Transaction, block_number float64, publicKey string) (string, error) {
-	msgParamsBytes, err := json.Marshal(tx)
-	if err != nil {
-		return "", err
+func binarySearch(array []uint, to_search uint) bool {
+	found := false
+	low := 0
+	high := len(array) - 1
+	for low <= high {
+		mid := (low + high) / 2
+		if array[mid] == to_search {
+			found = true
+			break
+		}
+		if array[mid] < to_search {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
 	}
-	pubKeyBytes, err := base64.StdEncoding.DecodeString(publicKey)
-	if err != nil {
-		return "", err
-	}
-	var peersPublicKey [32]byte
-	copy(peersPublicKey[:], pubKeyBytes)
-	// generate ephemeral keypair
-	ephemeralKeyPub, ephemeralKeyPriv, err := box.GenerateKey(rand.Reader)
-	if err != nil {
-		return "", err
-	}
-	nonce := new([24]byte)
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return "", err
-	}
-	encryptedMessage := make([]byte, len(string(msgParamsBytes))+box.Overhead)
-	// encrypt
-	box.Seal(encryptedMessage[:0], msgParamsBytes, nonce, &peersPublicKey, ephemeralKeyPriv)
-	output := map[string]interface{}{
-		"version":        "x25519-xsalsa20-poly1305",
-		"nonce":          base64.StdEncoding.EncodeToString(nonce[:]),
-		"ephemPublicKey": base64.StdEncoding.EncodeToString(ephemeralKeyPub[:]),
-		"ciphertext":     base64.StdEncoding.EncodeToString(encryptedMessage),
-	}
-	result, err := json.Marshal(output)
-	if err != nil {
-		panic(err)
-	}
-	encrypted_transaction := "0x" + hex.EncodeToString(result)
-	fmt.Println("Encrypted Hex Result ", encrypted_transaction)
-
-	return encrypted_transaction, nil
+	return found
 }

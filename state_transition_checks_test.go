@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"os"
 	"testing"
 )
 
@@ -29,72 +27,35 @@ func TestCheckNonce(t *testing.T) {
 }
 
 func TestTransitionState(t *testing.T) {
-	prev_balances := make(map[string]map[string]string)
-	prev_balances_file, err := os.Open("test_data/prev_balances.json")
+	input_data, _, err := GetData("./test_data")
 	if err != nil {
-		t.Errorf("Error opening test_data/prev_balances.json")
+		t.Errorf("Error in GetData " + err.Error())
 		return
 	}
-	err = json.NewDecoder(prev_balances_file).Decode(&prev_balances)
-	if err != nil {
-		t.Errorf("Error decoding json from test_data/prev_balances.json")
-		return
-	}
-	defer prev_balances_file.Close()
-
-	transactions := make([]interface{}, 0)
-	transactions_file, err := os.Open("test_data/transactions.json")
-	if err != nil {
-		t.Errorf("Error opening test_data/transactions.json")
-		return
-	}
-	err = json.NewDecoder(transactions_file).Decode(&transactions)
-	if err != nil {
-		t.Errorf("Error decoding json from test_data/transactions.json")
-		return
-	}
-	defer transactions_file.Close()
-
-	new_balances_desired := make(map[string]map[string]string)
-	new_balances_file, err := os.Open("test_data/new_balances.json")
-	if err != nil {
-		t.Errorf("Error opening test_data/new_balances.json")
-		return
-	}
-	err = json.NewDecoder(new_balances_file).Decode(&new_balances_desired)
-	if err != nil {
-		t.Errorf("Error decoding json from test_data/new_balances.json")
-		return
-	}
-	defer new_balances_file.Close()
-
-	meta_data := make(map[string]interface{})
-	meta_data_file, err := os.Open("test_data/meta_data.json")
-	if err != nil {
-		t.Errorf("Error opening test_data/meta_data.json")
-		return
-	}
-	err = json.NewDecoder(meta_data_file).Decode(&meta_data)
-	if err != nil {
-		t.Errorf("Error decoding json from test_data/meta_data.json")
-		return
-	}
-	defer meta_data_file.Close()
 	currencies := []string{}
-	for _, currency := range meta_data["currencies"].([]interface{}) {
-		currencies = append(currencies, currency.(string))
+	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
+		currencies = append(currencies, c.(string))
 	}
-	nft_collections := make([]map[string]interface{}, 0)
-	lister_nonce := make(map[string][]uint)
-	new_balances, _, _, _, err := TransitionState(prev_balances, transactions, currencies, nft_collections, lister_nonce, meta_data)
+	new_balances, _, _, _, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return
 	}
-
-	result := NestedMapsEqual(new_balances, new_balances_desired)
+	for _, v := range input_data.MetaData["users_ordered"].([]interface{}) {
+		if _, ok := new_balances[v.(string)]; !ok {
+			new_balances[v.(string)] = make(map[string]string)
+			new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)] = "0"
+		} else {
+			if _, ok := new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)]; !ok {
+				new_balances[v.(string)][input_data.MetaData["fee_currency_token"].(string)] = "0"
+			}
+		}
+	}
+	result := NestedMapsEqual(new_balances, input_data.NewUserBalances)
 	if !result {
 		t.Errorf("NestedMapsEqual(new_balances, new_balances_desired) = %t, want %t", result, true)
+		PrettyPrint("new_balances", new_balances)
+		PrettyPrint("new_balances_desired", input_data.NewUserBalances)
 		return
 	}
 

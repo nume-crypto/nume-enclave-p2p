@@ -1,25 +1,49 @@
 {
-    "block_number": 3,
-    "last_handled_cw_queue_index": "4",
-    "last_handled_queue_index": "4",
-    "max_num_balances": "8",
-    "max_num_users": "16",
-    "settlement_id": 4,
-    "users_ordered": [
-        "190ce0ac817bf41f26c665f414e0fc1c955864aff93b28132b2f73ed65522a29",
-        "2f75da0a7490d5bfe230532ba3873ac70bddca86079e2706f1f4f9f10e64f3bf",
-        "196d9f92fc71303cd2ac01eaec5dfef3590e526fd19cc6b78b51c1fbb4cb326a",
-        "095f7777e8c23209342ed0647791ab4e99bbe33a8f9114a338f0e7117fd9ff26",
-        "2bf71372c10ad0759e94a08916a168673197a26bca52c0b8521769dff0b0232c",
-        "18aa3d8172424d45f21a1a8c5fce176b91e1c649748c1631a654d3b4c3e72c29",
-        "282e55a1f3608a3f92eca0f582aa10b02da7d79d47a5d3101095c1583bc328ad"
-    ],
+    "block_number": 0,
     "currencies": [
-        "0x799c6832d187243f3367902079A72fb3Fd61cdF7",
-        "0xEe146Fac7b2fce5FdBE31C36d89cF92f6b006F80",
         "0x0b6D9aB4c80889b65A61050470CBC5523d8Ce48D",
+        "0xEe146Fac7b2fce5FdBE31C36d89cF92f6b006F80",
+        "0x799c6832d187243f3367902079A72fb3Fd61cdF7",
         "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723",
         "0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6",
-        "0x0000000000000000000000000000000000000000"
+        "0x1111111111111111111111111111111111111111"
+    ],
+    "fee_currency_token": "0xEe146Fac7b2fce5FdBE31C36d89cF92f6b006F80",
+    "last_handled_cw_queue_index": "0",
+    "last_handled_nft_cw_queue_index": "0",
+    "last_handled_nft_queue_index": "0",
+    "last_handled_queue_index": "0",
+    "max_num_balances": "8",
+    "max_num_collections": "8",
+    "max_num_users": "16",
+    "nume_nft_fee_map": {
+        "nft_mint": "0.10",
+        "nft_trade": "0.30",
+        "nft_transfer": "0.05"
+    },
+    "nume_token_fee_map": {
+        "0x0b6D9aB4c80889b65A61050470CBC5523d8Ce48D": "0.05",
+        "0x1111111111111111111111111111111111111111": "0.05",
+        "0x799c6832d187243f3367902079A72fb3Fd61cdF7": "0.05",
+        "0xCE47C48fDF8c9355FDbE4DacC1e1954914D65Be6": "0.05",
+        "0xE9573B8A0AF951431bcBD194E8cc3AeE654Cd723": "0.05",
+        "0xEe146Fac7b2fce5FdBE31C36d89cF92f6b006F80": "0.05"
+    },
+    "nume_user": "0x25c51feecefe36a630c3152712f269affc93b66b",
+    "old_users_nonce": {},
+    "settlement_id": 1,
+    "users_ordered": [
+        "0xccff350ef46b85228d6650a802107e58bf6a32ab",
+        "0x1b34b2f706cda183e4818d2ceaf58253ccab3428",
+        "0x11c830b25a15e39006094377fdc409c11c002b48",
+        "0xa9b39cb5ebf5deb0818561e8bc64092fbde34613",
+        "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
+        "0xc8902116932225cc2e5d21d090574a54c10dc21b",
+        "0x995227bd4dbfcd247fd7c97edba86c4ad46bfb05",
+        "0xe9e2d5240237955f5955c28cd9ee9d5f66800cf1",
+        "0x25c51feecefe36a630c3152712f269affc93b66b",
+        "0xdc42d1dd82217013b79eba43673912c4a3fc7bea",
+        "0xdc42d1dd82217013b79eba43673912c4a3fc7be1",
+        "0x447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"
     ]
 }

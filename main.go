@@ -53,7 +53,7 @@ func main() {
 	defer TimeTrack(time.Now(), "main")
 	settlement_started_at := time.Now()
 
-	input_data, md5_sum_str, err := GetData("./data")
+	input_data, md5_sum_str, err := GetData("./test_data")
 	if err != nil {
 		fmt.Println("read err", err)
 	}
@@ -360,7 +360,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		queue_hash, queue_len, ok = QueueHash(input_transactions)
+		queue_hash, queue_len, ok = QueueHash(input_transactions, "deposit")
 		if !ok {
 			fmt.Println("error in getting queue hash")
 			return
@@ -388,7 +388,7 @@ func main() {
 			fmt.Println("error in queue size")
 			return
 		}
-		nft_queue_hash, nft_queue_len, ok = QueueHash(input_transactions)
+		nft_queue_hash, nft_queue_len, ok = QueueHash(input_transactions, "nft_deposit")
 		if !ok {
 			fmt.Println("error in getting queue hash")
 			return

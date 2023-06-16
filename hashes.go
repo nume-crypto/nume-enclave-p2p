@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"sort"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
@@ -34,12 +35,12 @@ func NftQueueItemHash(address string, currency string, amountOrNftTokenId string
 	return hash, true
 }
 
-func QueueHash(queue []Transaction) ([]byte, int, bool) {
+func QueueHash(queue []Transaction, tx_type string) ([]byte, int, bool) {
 	var queue_hash []byte
 
 	var valid_queue [][]byte
 	for i := 0; i < len(queue); i++ {
-		if queue[i].Type == "deposit" || queue[i].Type == "nft_deposit" {
+		if queue[i].Type == tx_type {
 			cb, ok := QueueItemHash(queue[i].To, queue[i].CurrencyOrNftContractAddress, queue[i].AmountOrNftTokenId)
 			if !ok {
 				return queue_hash, 0, ok
@@ -111,7 +112,7 @@ func WithdrawalHash(withdrawal []Transaction) ([]byte, []string, []bool, []strin
 	}
 	wa, err := hex.DecodeString(withdrawal_str)
 	if err != nil {
-		fmt.Println("err", err)
+		return withdrawal_hash, withdrawal_amounts_or_token_id, withdrawal_l2_minted, withdrawal_addresses, withdrawal_currency_or_nft_contract, withdrawal_type, false
 	}
 	withdrawal_hash = crypto.Keccak256(wa)
 
@@ -184,7 +185,6 @@ func NftWithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []strin
 	types := []string{}
 	values := []interface{}{}
 	for _, item := range valid_queue {
-		fmt.Println("item", hex.EncodeToString(item))
 		types = append(types, "uint256")
 		values = append(values, new(big.Int).SetBytes(item))
 	}
@@ -193,4 +193,29 @@ func NftWithdrawalQueueHash(queue []Transaction) ([]byte, int, []string, []strin
 		values,
 	)
 	return queue_hash, len(addresses), addresses, amounts, tokens, l2_minted, true
+}
+
+func GetOptimizedNonce(used_lister_nonce []uint) []uint {
+	optimized_used_lister_nonce := []uint{}
+	sort.Slice(used_lister_nonce, func(i, j int) bool { return used_lister_nonce[i] < used_lister_nonce[j] })
+	last_optimized_nonce := uint(0)
+	for i, nonce := range used_lister_nonce {
+		if uint(i+1) == nonce {
+			last_optimized_nonce = nonce
+			continue
+		} else {
+			if last_optimized_nonce != 0 {
+				optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
+				optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
+				last_optimized_nonce = 0
+			}
+			optimized_used_lister_nonce = append(optimized_used_lister_nonce, nonce)
+		}
+	}
+	if last_optimized_nonce != 0 {
+		optimized_used_lister_nonce = append([]uint{0}, optimized_used_lister_nonce...)
+		optimized_used_lister_nonce = append(optimized_used_lister_nonce, last_optimized_nonce)
+		last_optimized_nonce = 0
+	}
+	return optimized_used_lister_nonce
 }
