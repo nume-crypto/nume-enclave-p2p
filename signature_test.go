@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,7 +9,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms"
 )
 
+func skipCI(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
+	}
+}
 func TestDecrypt(t *testing.T) {
+	skipCI(t)
 	sess := session.Must(session.NewSession())
 	kms_client := kms.New(sess, aws.NewConfig().WithRegion("us-east-1"))
 	user_keys := make(map[string]ValidatorKeys)
@@ -40,6 +47,7 @@ func TestDecrypt(t *testing.T) {
 }
 
 func TestAggregateSignature(t *testing.T) {
+	skipCI(t)
 	signature, aggregated_public_key_components, err := AggregateSignature("10afdfd0a74398e23708f64b1ebdc41a78d85eebcb3b3d5fc7a9dd411f8f852d", []string{"d1f0f4e6df9803f1c94fe46214037c2fa926238de5504315abac0e9a5c189843", "b155212c78e165ab377c6e1c142ba828a94a05699b60c0d12c279cd7e5a3f4ae"})
 	if err != nil {
 		t.Errorf("Error aggregating signature" + err.Error())
@@ -75,6 +83,7 @@ func TestAggregateSignature(t *testing.T) {
 }
 
 func TestSignMessage(t *testing.T) {
+	skipCI(t)
 	user_keys := make(map[string]ValidatorKeys)
 	user_keys["162ef608bf92f47846fbf53481f1b0504e3bd1f1678376b20139bd94cf0003eb"] = ValidatorKeys{
 		EncryptedPrivateKey: "AQICAHh2fn5fQzf0pR+JWPGR8yLKZjEywJ8b8umBI9kzCAFVdAGN9n0CV+9w2tjYAqrVQWhcAAAAojCBnwYJKoZIhvcNAQcGoIGRMIGOAgEAMIGIBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDItcDL4lPiDkr7spewIBEIBbRb6Pltakos+qO7Ocpv0aiXT4GqF/8kMqm4pTFXMVO698rjL1u7PrudG09yiXvTVR3n/4hQrQf+LoGBi4CXTlc80z/f3OXTAB5tJCwNhOLAPgKZmo5X9MAT759A==",

@@ -137,7 +137,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				tx_receiver = trade.To
 				tx_nft_contract = trade.NftContractAddress
 				tx_nft_token_id = trade.NftTokenId
-				fmt.Println("nft trade receiver", tx_receiver)
 			}
 			users_updated_map[tx_receiver] = true
 			has_process.HasNFTDeposit = true
@@ -156,7 +155,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				tx_sender = trade.From
 				tx_nft_contract = trade.NftContractAddress
 				tx_nft_token_id = trade.NftTokenId
-				fmt.Println("nft trade sender", tx_sender)
 			}
 			users_updated_map[tx_sender] = true
 			if _, ok := state_balances[tx_sender]; ok {

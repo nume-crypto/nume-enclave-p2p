@@ -27,3 +27,4 @@ data/
 vendor/
 
 .DS_store
+*.html
