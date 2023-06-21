@@ -1,6 +1,6 @@
 [
     {
-        "Id": 1,
+        "Id": 2,
         "Owner": "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
         "ContractAddress": "0xedb6375347e060b055d6af9842ba8c55e3d93e3a",
         "Name": "New NFT Collection",
@@ -8,8 +8,11 @@
         "MintStart": "10",
         "MintEnd": "100",
         "MintUsers": [
-            "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a",
-            "0x447bF33F7c7C925eb7674bCF590AeD4Aa57e656b"
-        ]
+            "0x46714661eecb6f07065dcb4bf3d9b772dcefa63a"
+        ],
+        "MintFees": "1000",
+        "MintFeesToken": "0xEe146Fac7b2fce5FdBE31C36d89cF92f6b006F80",
+        "RoyaltyFeesPercetage": "10",
+        "Signature": "0x4e55606dd8904ffd61bb8aea4c1d8ab3fcec635dbe6abed6c3bce9a1afafc30914d756433fe1b5e748f1962f04a0f5cbf6e60c345a4c1a2e586eb66154a116061c"
     }
 ]

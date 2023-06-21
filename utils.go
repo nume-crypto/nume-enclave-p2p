@@ -7,12 +7,47 @@ import (
 	"log"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
+
+type SettlementRequest struct {
+	SettlementId                         uint                   `json:"settlementId" binding:"required"`
+	Root                                 string                 `json:"root" binding:"required"`
+	NftRoot                              string                 `json:"nftRoot" binding:"required"`
+	AggregatedSignature                  string                 `json:"aggregatedSignature" binding:"required"`
+	AggregatedPublicKeyComponents        []string               `json:"aggregatedPublicKeyComponents" binding:"required"`
+	BlockNumber                          string                 `json:"blockNumber" binding:"required"`
+	QueueHash                            string                 `json:"queueHash" binding:"required"` // deposit
+	QueueIndex                           int                    `json:"queueIndex"`
+	NftQueueHash                         string                 `json:"nftQueueHash" binding:"required"` // deposit nft
+	NftQueueIndex                        int                    `json:"nftQueueIndex"`
+	WithdrawalHash                       string                 `json:"withdrawalHash" binding:"required"` // withdrawal
+	WithdrawalAmountOrTokenId            []string               `json:"withdrawalAmountOrTokenId" binding:"required"`
+	WithdrawalAddresses                  []string               `json:"withdrawalAddresses" binding:"required"`
+	WithdrawalCurrencyOrNftContract      []string               `json:"withdrawalCurrencyOrNftContract" binding:"required"`
+	WithdrawalL2Minted                   []bool                 `json:"withdrawalL2Minted" binding:"required"`
+	WithdrawalType                       []int                  `json:"withdrawalType" binding:"required"`
+	ContractWithdrawalAddresses          []string               `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
+	ContractWithdrawalAmounts            []string               `json:"contractWithdrawalAmounts" binding:"required"`
+	ContractWithdrawalTokens             []string               `json:"contractWithdrawalTokes" binding:"required"`
+	ContractWithdrawalQueueIndex         int                    `json:"contractWithdrawalQueueIndex"`
+	NftContractWithdrawalAddresses       []string               `json:"nftContractWithdrawalAddresses" binding:"required"` // nft contract withdrawal
+	NftContractWithdrawalTokensIds       []string               `json:"nftContractWithdrawalTokenIds" binding:"required"`
+	NftContractWithdrawalContractAddress []string               `json:"nftContractWithdrawalContractAddress" binding:"required"`
+	NftContractWithdrawalQueueIndex      int                    `json:"nftContractWithdrawalQueueIndex"`
+	NftContractWithdrawalL2Minted        []bool                 `json:"nftContractWithdrawalL2Minted" binding:"required"`
+	Message                              string                 `json:"message" binding:"required"` // message
+	UsersUpdated                         map[string]interface{} `json:"usersUpdated" binding:"required"`
+	NftCollectionsCreated                map[int]string         `json:"nftCollectionsCreated" binding:"required"`
+	UserListerNonce                      map[string][]uint      `json:"usedListerNonce" binding:"required"`
+	SignatureRecordedAt                  time.Time              `json:"signatureRecordedAt" binding:"required"`
+	SettlementStartedAt                  time.Time              `json:"settlementStartedAt" binding:"required"`
+}
 
 func PrettyPrint(text string, v interface{}) (err error) {
 	b, err := json.MarshalIndent(v, "", "  ")
@@ -153,8 +188,8 @@ func updateHasProcess(has_process *HasProcess, transaction Transaction) {
 func verifyMintData(transaction Transaction, nft_collections_map map[string]map[string]interface{}) error {
 	{
 		message := solsha3.SoliditySHA3(
-			[]string{"address", "address"},
-			[]interface{}{transaction.CurrencyOrNftContractAddress, transaction.To},
+			[]string{"uint256", "address", "address", "uint256", "address", "uint256"},
+			[]interface{}{strconv.Itoa(int(transaction.Nonce)), transaction.CurrencyOrNftContractAddress, transaction.To, transaction.MintFees, transaction.MintFeesToken, transaction.NumeFees},
 		)
 		if !EthVerify(hex.EncodeToString(message), transaction.Signature, transaction.To) {
 			return fmt.Errorf("invalid mint signature")

@@ -139,7 +139,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				tx_nft_token_id = trade.NftTokenId
 			}
 			users_updated_map[tx_receiver] = true
-			has_process.HasNFTDeposit = true
 			if _, ok := state_balances[tx_receiver]; ok {
 				state_balances[tx_receiver][tx_nft_contract+"-"+tx_nft_token_id] = "yes"
 			} else {
@@ -291,7 +290,7 @@ func DeductFees(state_balances map[string]map[string]string, sender string, fee_
 			return state_balances, fmt.Errorf("user does not have enough balance to pay fees " + sender + " " + fee_currency_token)
 		}
 	} else {
-		return state_balances, fmt.Errorf("user does not have any balance to pay fees")
+		return state_balances, fmt.Errorf("user does not have any balance to pay fees " + sender)
 	}
 
 	// Credit To Receiver

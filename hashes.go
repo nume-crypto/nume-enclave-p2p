@@ -219,3 +219,51 @@ func GetOptimizedNonce(used_lister_nonce []uint) []uint {
 	}
 	return optimized_used_lister_nonce
 }
+
+func ProcessAndVerifyCollectionData(collection_data map[string]interface{}) (bool, []byte) {
+	types := []string{}
+	values := []interface{}{}
+	for _, t := range collection_data["MintUsers"].([]interface{}) {
+		types = append(types, "address")
+		values = append(values, t)
+	}
+	mint_users_hash := solsha3.SoliditySHA3(
+		types,
+		values)
+	meta_hash := solsha3.SoliditySHA3(
+		[]string{"uint256", "uint256", "bytes32", "bytes32", "uint256", "address", "uint256"},
+		[]interface{}{
+			collection_data["MintStart"],
+			collection_data["MintEnd"],
+			solsha3.SoliditySHA3("string", collection_data["BaseUri"]),
+			mint_users_hash,
+			collection_data["MintFees"],
+			collection_data["MintFeesToken"],
+			collection_data["RoyaltyFeesPercetage"],
+		},
+	)
+	hash := solsha3.SoliditySHA3(
+		[]string{"address", "address", "bytes32"},
+		[]interface{}{
+			collection_data["Owner"],
+			collection_data["ContractAddress"],
+			meta_hash,
+		},
+	)
+	base_uri_hash := solsha3.SoliditySHA3([]string{"string"}, []interface{}{collection_data["BaseUri"]})
+	message := solsha3.SoliditySHA3(
+		[]string{"address", "address", "uint256", "uint256", "bytes32", "uint256", "address", "uint256", "bytes32"},
+		[]interface{}{
+			collection_data["ContractAddress"],
+			collection_data["Owner"],
+			collection_data["MintStart"],
+			collection_data["MintEnd"],
+			mint_users_hash,
+			collection_data["MintFees"],
+			collection_data["MintFeesToken"],
+			collection_data["RoyaltyFeesPercetage"],
+			base_uri_hash,
+		},
+	)
+	return EthVerify(hex.EncodeToString(message), collection_data["Signature"].(string), collection_data["Owner"].(string)), hash
+}

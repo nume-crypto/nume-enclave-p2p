@@ -14,40 +14,6 @@ import (
 	progressbar "github.com/schollz/progressbar/v3"
 )
 
-type SettlementRequest struct {
-	SettlementId                         uint                   `json:"settlementId" binding:"required"`
-	Root                                 string                 `json:"root" binding:"required"`
-	NftRoot                              string                 `json:"nftRoot" binding:"required"`
-	AggregatedSignature                  string                 `json:"aggregatedSignature" binding:"required"`
-	AggregatedPublicKeyComponents        []string               `json:"aggregatedPublicKeyComponents" binding:"required"`
-	BlockNumber                          string                 `json:"blockNumber" binding:"required"`
-	QueueHash                            string                 `json:"queueHash" binding:"required"` // deposit
-	QueueIndex                           int                    `json:"queueIndex"`
-	NftQueueHash                         string                 `json:"nftQueueHash" binding:"required"` // deposit nft
-	NftQueueIndex                        int                    `json:"nftQueueIndex"`
-	WithdrawalHash                       string                 `json:"withdrawalHash" binding:"required"` // withdrawal
-	WithdrawalAmountOrTokenId            []string               `json:"withdrawalAmountOrTokenId" binding:"required"`
-	WithdrawalAddresses                  []string               `json:"withdrawalAddresses" binding:"required"`
-	WithdrawalCurrencyOrNftContract      []string               `json:"withdrawalCurrencyOrNftContract" binding:"required"`
-	WithdrawalL2Minted                   []bool                 `json:"withdrawalL2Minted" binding:"required"`
-	WithdrawalType                       []int                  `json:"withdrawalType" binding:"required"`
-	ContractWithdrawalAddresses          []string               `json:"contractWithdrawalAddresses" binding:"required"` // contract withdrawal
-	ContractWithdrawalAmounts            []string               `json:"contractWithdrawalAmounts" binding:"required"`
-	ContractWithdrawalTokens             []string               `json:"contractWithdrawalTokes" binding:"required"`
-	ContractWithdrawalQueueIndex         int                    `json:"contractWithdrawalQueueIndex"`
-	NftContractWithdrawalAddresses       []string               `json:"nftContractWithdrawalAddresses" binding:"required"` // nft contract withdrawal
-	NftContractWithdrawalTokensIds       []string               `json:"nftContractWithdrawalTokenIds" binding:"required"`
-	NftContractWithdrawalContractAddress []string               `json:"nftContractWithdrawalContractAddress" binding:"required"`
-	NftContractWithdrawalQueueIndex      int                    `json:"nftContractWithdrawalQueueIndex"`
-	NftContractWithdrawalL2Minted        []bool                 `json:"nftContractWithdrawalL2Minted" binding:"required"`
-	Message                              string                 `json:"message" binding:"required"` // message
-	UsersUpdated                         map[string]interface{} `json:"usersUpdated" binding:"required"`
-	NftCollectionsCreated                map[int]string         `json:"nftCollectionsCreated" binding:"required"`
-	UserListerNonce                      map[string][]uint      `json:"usedListerNonce" binding:"required"`
-	SignatureRecordedAt                  time.Time              `json:"signatureRecordedAt" binding:"required"`
-	SettlementStartedAt                  time.Time              `json:"settlementStartedAt" binding:"required"`
-}
-
 func main() {
 
 	defer TimeTrack(time.Now(), "main")
@@ -83,32 +49,11 @@ func main() {
 		},
 	)
 	for i := 0; i < len(input_data.OldNftCollections); i++ {
-		types := []string{}
-		values := []interface{}{}
-		for _, t := range input_data.OldNftCollections[i]["MintUsers"].([]interface{}) {
-			types = append(types, "address")
-			values = append(values, t)
+		verfied, hash := ProcessAndVerifyCollectionData(input_data.OldNftCollections[i])
+		if !verfied {
+			fmt.Println("error in verifying nft collection")
+			return
 		}
-		mint_users_hash := solsha3.SoliditySHA3(
-			types,
-			values)
-		meta_hash := solsha3.SoliditySHA3(
-			[]string{"uint256", "uint256", "bytes32", "bytes32"},
-			[]interface{}{
-				input_data.OldNftCollections[i]["MintStart"],
-				input_data.OldNftCollections[i]["MintEnd"],
-				solsha3.SoliditySHA3("string", input_data.OldNftCollections[i]["BaseUri"]),
-				mint_users_hash,
-			},
-		)
-		hash := solsha3.SoliditySHA3(
-			[]string{"address", "address", "bytes32"},
-			[]interface{}{
-				input_data.OldNftCollections[i]["Owner"],
-				input_data.OldNftCollections[i]["ContractAddress"],
-				meta_hash,
-			},
-		)
 		nft_collection_data[i] = hash
 	}
 	for i := len(input_data.OldNftCollections); i < max_num_collections; i++ {
@@ -135,6 +80,7 @@ func main() {
 	empty_balances_tree := NewMerkleTree(empty_balances_data)
 	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
+
 	ordered_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if i > len(input_data.OldUserBalances) {
@@ -175,6 +121,7 @@ func main() {
 		}(i)
 	}
 	wg.Wait()
+
 	prev_acc_tree_time := time.Now()
 	tree := NewMerkleTree(prev_val_hash)
 	currencies := []string{}
@@ -203,6 +150,7 @@ func main() {
 			}
 		}
 	}
+
 	init_state_balances := input_data.OldUserBalances
 	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData)
 	if err != nil {
@@ -236,6 +184,7 @@ func main() {
 	var prev_ctree_root []byte
 	prev_ctree_root = append(prev_ctree_root, nft_collection_tree.Root...)
 	prev_tree_root = append(prev_tree_root, tree.Root...)
+
 	new_acc_tree_time := time.Now()
 	update_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
@@ -259,34 +208,14 @@ func main() {
 	}
 	wg.Wait()
 	fmt.Println("new acc tree time", time.Since(new_acc_tree_time))
+
 	updated_ntf_collections := make(map[int]string)
 	for i := len(input_data.OldNftCollections); i < len(input_data.NewNftCollections); i++ {
-		types := []string{}
-		values := []interface{}{}
-		for _, t := range input_data.NewNftCollections[i]["MintUsers"].([]interface{}) {
-			types = append(types, "address")
-			values = append(values, t)
+		verfied, hash := ProcessAndVerifyCollectionData(input_data.NewNftCollections[i])
+		if !verfied {
+			fmt.Println("error in verifying nft collection")
+			return
 		}
-		mint_users_hash := solsha3.SoliditySHA3(
-			types,
-			values)
-		meta_hash := solsha3.SoliditySHA3(
-			[]string{"uint256", "uint256", "bytes32", "bytes32"},
-			[]interface{}{
-				input_data.NewNftCollections[i]["MintStart"],
-				input_data.NewNftCollections[i]["MintEnd"],
-				solsha3.SoliditySHA3("string", input_data.NewNftCollections[i]["BaseUri"]),
-				mint_users_hash,
-			},
-		)
-		hash := solsha3.SoliditySHA3(
-			[]string{"address", "address", "bytes32"},
-			[]interface{}{
-				input_data.NewNftCollections[i]["Owner"],
-				input_data.NewNftCollections[i]["ContractAddress"],
-				meta_hash,
-			},
-		)
 		nft_collection_tree.UpdateLeaf(i, hex.EncodeToString(hash))
 		updated_ntf_collections[i] = hex.EncodeToString(hash)
 	}
@@ -464,6 +393,7 @@ func main() {
 		UserListerNonce:                      input_data.UserListerNonce,
 		NftCollectionsCreated:                updated_ntf_collections,
 	}
-	PrettyPrint("response", response)
+	fmt.Println("^") // delimiter
+	PrettyPrint("", response)
 
 }
