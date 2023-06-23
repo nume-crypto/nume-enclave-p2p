@@ -30,7 +30,7 @@ func main() {
 	defer TimeTrack(time.Now(), "main")
 	settlement_started_at := time.Now()
 
-	input_data, md5_sum_str, err := GetData("./test_data")
+	input_data, md5_sum_str, err := GetData("./data")
 	if err != nil {
 		fmt.Println("read err", err)
 	}
