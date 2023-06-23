@@ -20,6 +20,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		nft_collections_map[nft_collection["ContractAddress"].(string)] = nft_collection
 	}
 	nume_address := meta_data["nume_user"].(string)
+	users_updated_map[nume_address] = true
 	fee_currency_token := meta_data["fee_currency_token"].(string)
 	has_process := HasProcess{}
 	for i, tx := range transactions {
