@@ -14,6 +14,17 @@ import (
 	progressbar "github.com/schollz/progressbar/v3"
 )
 
+func CopyMap(m map[string]map[string]string) map[string]map[string]string {
+	cp := make(map[string]map[string]string)
+	for k, v := range m {
+		cp[k] = make(map[string]string)
+		for k1, v1 := range v {
+			cp[k][k1] = v1
+		}
+	}
+	return cp
+}
+
 func main() {
 
 	defer TimeTrack(time.Now(), "main")
@@ -150,8 +161,7 @@ func main() {
 			}
 		}
 	}
-
-	init_state_balances := input_data.OldUserBalances
+	init_state_balances := CopyMap(input_data.OldUserBalances)
 	new_balances, has_process, users_updated_map, user_nonce_tracker, err := TransitionState(init_state_balances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData)
 	if err != nil {
 		fmt.Println(err)
@@ -190,18 +200,16 @@ func main() {
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		wg.Add(1)
 		go func(i int, u interface{}) {
-			balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
-			if !ok {
-				fmt.Println("error in getting balances root new")
-				return
-			}
-			leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
-			if users_updated_map[u.(string)] {
+			if users_updated_map[u.(string)] || i > len(input_data.OldUserBalances)-1 {
+				balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
+				if !ok {
+					fmt.Println("error in getting balances root new")
+					return
+				}
+				leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
 				sm.Store(u.(string), hex.EncodeToString(leaf))
-			} else if !bytes.Equal(leaf, prev_val_hash[i]) {
-				sm.Store(u.(string), hex.EncodeToString(leaf))
+				tree.UpdateLeaf(i, hex.EncodeToString(leaf))
 			}
-			tree.UpdateLeaf(i, hex.EncodeToString(leaf))
 			wg.Done()
 			update_bar.Add(1)
 		}(i, u)

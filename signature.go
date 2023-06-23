@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -66,7 +67,8 @@ func DecryptKeys(data map[string]ValidatorKeys, kms_client *kms.KMS) ([]string, 
 }
 
 func AggregateSignature(message string, keys []string) (string, []string, error) {
-	app := "./bn256_aggregatesign"
+	os := runtime.GOOS
+	app := "./bn256_aggregatesign_" + os
 	var aggregated_public_key_components []string
 	var args []string
 	args = append(args, message)
