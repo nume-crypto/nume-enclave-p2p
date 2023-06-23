@@ -198,9 +198,9 @@ func main() {
 	new_acc_tree_time := time.Now()
 	update_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
-		wg.Add(1)
-		go func(i int, u interface{}) {
-			if users_updated_map[u.(string)] || i > len(input_data.OldUserBalances)-1 {
+		if users_updated_map[u.(string)] || i > len(input_data.OldUserBalances)-1 {
+			wg.Add(1)
+			go func(i int, u interface{}) {
 				balances_root, ok := GetBalancesRoot(input_data.NewUserBalances[u.(string)], input_data.NewUserBalanceOrder[u.(string)], max_num_balances)
 				if !ok {
 					fmt.Println("error in getting balances root new")
@@ -209,10 +209,10 @@ func main() {
 				leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
 				sm.Store(u.(string), hex.EncodeToString(leaf))
 				tree.UpdateLeaf(i, hex.EncodeToString(leaf))
-			}
-			wg.Done()
-			update_bar.Add(1)
-		}(i, u)
+				wg.Done()
+				update_bar.Add(1)
+			}(i, u)
+		}
 	}
 	wg.Wait()
 	fmt.Println("new acc tree time", time.Since(new_acc_tree_time))

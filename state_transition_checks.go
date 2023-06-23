@@ -168,7 +168,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			if trade.Type == "nft_trade" {
 				tx_receiver = trade.From
 				tx_currency = trade.Currency
-				tx_amt = trade.BuyAmount
+				trade_buy_amt_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
+				if !ok {
+					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				}
+				trade_royalty_bi, ok := new(big.Int).SetString(trade.RoyaltyAmount, 10)
+				if !ok {
+					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				}
+				tx_amt = new(big.Int).Sub(trade_buy_amt_bi, trade_royalty_bi).String()
 			}
 			if _, ok := state_balances[tx_receiver]; ok {
 				if _, ok := state_balances[tx_receiver][tx_currency]; ok {
@@ -198,7 +206,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			if trade.Type == "nft_trade" {
 				tx_sender = trade.To
 				tx_currency = trade.Currency
-				tx_amt = trade.BuyAmount
+				trade_buy_amt_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
+				if !ok {
+					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				}
+				trade_royalty_bi, ok := new(big.Int).SetString(trade.RoyaltyAmount, 10)
+				if !ok {
+					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				}
+				tx_amt = new(big.Int).Sub(trade_buy_amt_bi, trade_royalty_bi).String()
 			}
 			users_updated_map[tx_sender] = true
 			if _, ok := state_balances[tx_sender]; ok {
@@ -239,7 +255,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			if !EthVerify(list_message, trade.ListSignature, trade.From) {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
 			}
-
 			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)))
 			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid buy signature")
