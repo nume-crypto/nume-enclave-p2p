@@ -170,6 +170,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			tx_receiver := transaction.To
 			tx_currency := transaction.CurrencyOrNftContractAddress
 			tx_amt := transaction.AmountOrNftTokenId
+			users_updated_map[tx_receiver] = true
 			if trade.Type == "nft_trade" {
 				tx_receiver = trade.From
 				tx_currency = trade.Currency
@@ -208,6 +209,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			tx_sender := transaction.From
 			tx_currency := transaction.CurrencyOrNftContractAddress
 			tx_amt := transaction.AmountOrNftTokenId
+			users_updated_map[tx_sender] = true
 			if trade.Type == "nft_trade" {
 				tx_sender = trade.To
 				tx_currency = trade.Currency
