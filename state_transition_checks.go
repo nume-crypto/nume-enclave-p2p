@@ -85,9 +85,16 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" && transaction.Type != "" {
 			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
+		if trade.Type == "nft_trade" {
+			if !CheckNonce(user_nonce_tracker[trade.To], uint64(trade.BuyerNonce)) {
+				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+			}
+		}
 		updateHasProcess(&has_process, transaction)
 		if transaction.Type == "nft_mint" {
 			user_nonce_tracker[transaction.To] = uint64(transaction.Nonce)
+		} else if trade.Type == "nft_trade" {
+			user_nonce_tracker[trade.To] = uint64(trade.BuyerNonce)
 		} else {
 			user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
 		}
@@ -249,9 +256,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		}
 
 		if trade.Type == "nft_trade" {
-			if !CheckNonce(user_nonce_tracker[trade.To], uint64(trade.BuyerNonce)) {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
-			}
 			invalid_nonce := binarySearch(used_lister_nonce[trade.From], trade.ListerNonce)
 			if invalid_nonce {
 				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid lister nonce for transaction number %v", i+1)

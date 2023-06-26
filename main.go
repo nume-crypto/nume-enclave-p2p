@@ -11,7 +11,7 @@ import (
 	"time"
 
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
-	progressbar "github.com/schollz/progressbar/v3"
+	"github.com/schollz/progressbar/v3"
 )
 
 func CopyMap(m map[string]map[string]string) map[string]map[string]string {
