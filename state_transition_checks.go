@@ -86,7 +86,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		updateHasProcess(&has_process, transaction)
-		user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
+		if transaction.Type == "nft_mint" {
+			user_nonce_tracker[transaction.To] = uint64(transaction.Nonce)
+		} else {
+			user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
+		}
 
 		// Handle Nume Fees wherever applicable
 		var nume_fees *big.Int
