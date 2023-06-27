@@ -11,9 +11,8 @@ func CheckNonce(last_nonce, current_nonce uint64) bool {
 	return last_nonce < current_nonce
 }
 
-func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}, used_lister_nonce map[string][]uint, meta_data map[string]interface{}) (map[string]map[string]string, HasProcess, map[string]bool, map[string]uint64, error) {
+func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}, used_lister_nonce map[string][]uint, meta_data map[string]interface{}, user_nonce_tracker map[string]uint64) (map[string]map[string]string, HasProcess, map[string]bool, error) {
 	users_updated_map := make(map[string]bool)
-	user_nonce_tracker := make(map[string]uint64)
 	nft_collections_map := make(map[string]map[string]interface{})
 	defer TimeTrack(time.Now(), "TransitionState")
 	for _, nft_collection := range nft_collections {
@@ -65,7 +64,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				}
 			}
 		} else {
-			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid transaction type")
+			return state_balances, has_process, users_updated_map, fmt.Errorf("invalid transaction type")
 		}
 		if transaction.IsInvalid {
 			if transaction.Type == "contract_withdrawal" {
@@ -79,15 +78,15 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		if transaction.Type != "" && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" {
 			verified, err := VerifyData(transaction, currencies)
 			if !verified || err != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
+				return state_balances, has_process, users_updated_map, fmt.Errorf("digital signature verification failed for transaction number %v %s %s", i+1, transaction.From, err)
 			}
 		}
 		if !CheckNonce(user_nonce_tracker[transaction.From], uint64(transaction.Nonce)) && transaction.Type != "nft_deposit" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" && transaction.Type != "" {
-			return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+			return state_balances, has_process, users_updated_map, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 		}
 		if trade.Type == "nft_trade" {
 			if !CheckNonce(user_nonce_tracker[trade.To], uint64(trade.BuyerNonce)) {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("nonce check failed for transaction number %v", i+1)
+				return state_balances, has_process, users_updated_map, fmt.Errorf("nonce check failed for transaction number %v", i+1)
 			}
 		}
 		updateHasProcess(&has_process, transaction)
@@ -106,32 +105,32 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 		if trade.Type == "nft_trade" {
 			nume_fees, ok = new(big.Int).SetString(trade.NumeFees, 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 			}
 			state_balances, error_in_fee = DeductFees(state_balances, trade.To, fee_currency_token, nume_fees, nume_address)
 			if error_in_fee != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
+				return state_balances, has_process, users_updated_map, error_in_fee
 			}
 		} else if transaction.Type == "transfer" || transaction.Type == "nft_transfer" || transaction.Type == "nft_mint" {
 			nume_fees, ok = new(big.Int).SetString(transaction.NumeFees, 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 			}
 			sender := transaction.From
 			if transaction.Type == "nft_mint" {
 				mint_fee_amount_bi, ok := new(big.Int).SetString(transaction.MintFees, 10)
 				if !ok {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 				}
 				state_balances, error_in_fee = DeductFees(state_balances, transaction.To, transaction.MintFeesToken, mint_fee_amount_bi, nft_collections_map[transaction.CurrencyOrNftContractAddress]["Owner"].(string))
 				if error_in_fee != nil {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
+					return state_balances, has_process, users_updated_map, error_in_fee
 				}
 				sender = transaction.To
 			}
 			state_balances, error_in_fee = DeductFees(state_balances, sender, fee_currency_token, nume_fees, nume_address)
 			if error_in_fee != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
+				return state_balances, has_process, users_updated_map, error_in_fee
 			}
 		}
 
@@ -139,7 +138,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			if transaction.Type == "nft_mint" {
 				err := verifyMintData(transaction, nft_collections_map)
 				if err != nil {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, err
+					return state_balances, has_process, users_updated_map, err
 				}
 			}
 			tx_receiver := transaction.To
@@ -183,11 +182,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				tx_currency = trade.Currency
 				trade_buy_amt_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 				if !ok {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 				}
 				trade_royalty_bi, ok := new(big.Int).SetString(trade.RoyaltyAmount, 10)
 				if !ok {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 				}
 				tx_amt = new(big.Int).Sub(trade_buy_amt_bi, trade_royalty_bi).String()
 			}
@@ -195,11 +194,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				if _, ok := state_balances[tx_receiver][tx_currency]; ok {
 					amount, ok := new(big.Int).SetString(tx_amt, 10)
 					if !ok {
-						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(state_balances[tx_receiver][tx_currency], 10)
 					if !ok {
-						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting current_balance to big int")
+						return state_balances, has_process, users_updated_map, fmt.Errorf("error converting current_balance to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Add(amount, current_balance)
@@ -222,11 +221,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				tx_currency = trade.Currency
 				trade_buy_amt_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 				if !ok {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 				}
 				trade_royalty_bi, ok := new(big.Int).SetString(trade.RoyaltyAmount, 10)
 				if !ok {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 				}
 				tx_amt = new(big.Int).Sub(trade_buy_amt_bi, trade_royalty_bi).String()
 			}
@@ -235,67 +234,67 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				if _, ok := state_balances[tx_sender][tx_currency]; ok {
 					amount, ok := new(big.Int).SetString(tx_amt, 10)
 					if !ok {
-						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+						return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 					}
 					current_balance, ok := new(big.Int).SetString(state_balances[tx_sender][tx_currency], 10)
 					if !ok {
-						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting current_balance to big int")
+						return state_balances, has_process, users_updated_map, fmt.Errorf("error converting current_balance to big int")
 					}
 					new_amt := new(big.Int)
 					new_amt.Sub(current_balance, amount)
 					state_balances[tx_sender][tx_currency] = new_amt.String()
 					if new_amt.Cmp(big.NewInt(0)) == -1 {
-						return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error: user balance negative")
+						return state_balances, has_process, users_updated_map, fmt.Errorf("error: user balance negative")
 					}
 				} else {
-					return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error: user does not have currency to transfer")
+					return state_balances, has_process, users_updated_map, fmt.Errorf("error: user does not have currency to transfer")
 				}
 			} else {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error: user does not have balance")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error: user does not have balance")
 			}
 		}
 
 		if trade.Type == "nft_trade" {
 			invalid_nonce := binarySearch(used_lister_nonce[trade.From], trade.ListerNonce)
 			if invalid_nonce {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid lister nonce for transaction number %v", i+1)
+				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid lister nonce for transaction number %v", i+1)
 			}
 			used_lister_nonce[trade.From] = append(used_lister_nonce[trade.From], trade.ListerNonce)
 			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
 			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.ListerNonce)))
 			if !EthVerify(list_message, trade.ListSignature, trade.From) {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid list signature")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid list signature")
 			}
 			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)))
 			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("invalid buy signature")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid buy signature")
 			}
 
 			amount_bi, ok := new(big.Int).SetString(trade.BuyAmount, 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 			}
 			listed_amt_bi, ok := new(big.Int).SetString(trade.ListAmount, 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 			}
 			if amount_bi.Cmp(listed_amt_bi) < 0 {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("list amount must be less than or equal to buy amount")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("list amount must be less than or equal to buy amount")
 			}
 
 			// Handle ROYALTY fee
 			royalty_amount_bi, ok := new(big.Int).SetString(trade.RoyaltyAmount, 10)
 			if !ok {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, fmt.Errorf("error converting amount to big int")
+				return state_balances, has_process, users_updated_map, fmt.Errorf("error converting amount to big int")
 			}
 			state_balances, error_in_fee = DeductFees(state_balances, trade.To, trade.Currency, royalty_amount_bi, nft_collections_map[trade.NftContractAddress]["Owner"].(string))
 			if error_in_fee != nil {
-				return state_balances, has_process, users_updated_map, user_nonce_tracker, error_in_fee
+				return state_balances, has_process, users_updated_map, error_in_fee
 			}
 		}
 	}
 
-	return state_balances, has_process, users_updated_map, user_nonce_tracker, nil
+	return state_balances, has_process, users_updated_map, nil
 }
 
 func DeductFees(state_balances map[string]map[string]string, sender string, fee_currency_token string, fees *big.Int, receiver string) (map[string]map[string]string, error) {

@@ -36,7 +36,11 @@ func TestTransitionState(t *testing.T) {
 	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
 		currencies = append(currencies, c.(string))
 	}
-	new_balances, _, _, _, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData)
+	user_nonce_tracker := map[string]uint64{}
+	for k, v := range input_data.MetaData["old_users_nonce"].(map[string]interface{}) {
+		user_nonce_tracker[k] = uint64(v.(float64))
+	}
+	new_balances, _, _, err := TransitionState(input_data.OldUserBalances, input_data.Transactions, currencies, append(input_data.OldNftCollections, input_data.NewNftCollections...), input_data.UserListerNonce, input_data.MetaData, user_nonce_tracker)
 	if err != nil {
 		t.Errorf("Error in TransitionState " + err.Error())
 		return
