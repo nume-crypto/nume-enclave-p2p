@@ -176,7 +176,6 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			tx_receiver := transaction.To
 			tx_currency := transaction.CurrencyOrNftContractAddress
 			tx_amt := transaction.AmountOrNftTokenId
-			users_updated_map[tx_receiver] = true
 			if trade.Type == "nft_trade" {
 				tx_receiver = trade.From
 				tx_currency = trade.Currency
@@ -190,6 +189,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 				}
 				tx_amt = new(big.Int).Sub(trade_buy_amt_bi, trade_royalty_bi).String()
 			}
+			users_updated_map[tx_receiver] = true
 			if _, ok := state_balances[tx_receiver]; ok {
 				if _, ok := state_balances[tx_receiver][tx_currency]; ok {
 					amount, ok := new(big.Int).SetString(tx_amt, 10)

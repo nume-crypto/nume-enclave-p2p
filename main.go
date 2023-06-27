@@ -92,7 +92,7 @@ func main() {
 	old_user_nonce := input_data.MetaData["old_users_nonce"].(map[string]interface{})
 	var wg sync.WaitGroup
 
-	ordered_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
+	// ordered_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if i > len(input_data.OldUserBalances) {
 			break
@@ -113,28 +113,31 @@ func main() {
 			}
 			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce, input_data.UserListerNonce[u.(string)])
 			prev_val_hash[i] = leaf
+			// fmt.Println(u,hex.EncodeToString(leaf), balances_root, nonce, input_data.UserListerNonce[u.(string)], "init")
 			wg.Done()
-			ordered_bar.Add(1)
+			// ordered_bar.Add(1)
 			// if i > 4000 {
 			// 	<-sem
 			// }
 		}(i, u)
 	}
 	wg.Wait()
-	empty_bar := progressbar.Default(int64(max_num_users - len(input_data.OldUserBalances)))
+	// empty_bar := progressbar.Default(int64(max_num_users - len(input_data.OldUserBalances)))
 	for i := len(input_data.OldUserBalances); i < max_num_users; i++ {
 		wg.Add(1)
 		go func(i int) {
 			leaf := GetLeafHash("0x"+fmt.Sprintf("%040s", strconv.FormatUint(uint64(i), 16)), "0x"+hex.EncodeToString(empty_balances_tree.Root), 0, []uint{})
 			prev_val_hash[i] = leaf
 			wg.Done()
-			empty_bar.Add(1)
+			// empty_bar.Add(1)
 		}(i)
 	}
 	wg.Wait()
 
 	prev_acc_tree_time := time.Now()
 	tree := NewMerkleTree(prev_val_hash)
+	// fmt.Println(hex.EncodeToString(tree.Root))
+	// return
 	currencies := []string{}
 	for _, c := range input_data.MetaData["currencies"].([]interface{}) {
 		currencies = append(currencies, c.(string))
@@ -172,6 +175,8 @@ func main() {
 		fmt.Println("error in transition state")
 		return
 	}
+	// PrettyPrint("users_updated_map", users_updated_map)
+	// PrettyPrint("user_nonce_tracker", user_nonce_tracker)
 
 	for _, v := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if _, ok := new_balances[v.(string)]; !ok {
@@ -200,7 +205,7 @@ func main() {
 	prev_tree_root = append(prev_tree_root, tree.Root...)
 
 	new_acc_tree_time := time.Now()
-	update_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
+	// update_bar := progressbar.Default(int64(len(input_data.MetaData["users_ordered"].([]interface{}))))
 	for i, u := range input_data.MetaData["users_ordered"].([]interface{}) {
 		if users_updated_map[u.(string)] || i > len(input_data.OldUserBalances)-1 {
 			wg.Add(1)
@@ -213,8 +218,9 @@ func main() {
 			leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
 			sm.Store(u.(string), hex.EncodeToString(leaf))
 			tree.UpdateLeaf(i, hex.EncodeToString(leaf))
+			// fmt.Println(u.(string), hex.EncodeToString(leaf), balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)] , "update")
 			wg.Done()
-			update_bar.Add(1)
+			// update_bar.Add(1)
 			// }(i, u)
 		}
 	}
@@ -405,7 +411,11 @@ func main() {
 		UserListerNonce:                      input_data.UserListerNonce,
 		NftCollectionsCreated:                updated_ntf_collections,
 	}
+
+	dummybar := progressbar.Default(1)
+	dummybar.Add(1)
 	fmt.Println("^") // delimiter
 	PrettyPrint("", response)
+	// PrettyPrint("", response.SettlementId)
 
 }
