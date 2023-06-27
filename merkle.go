@@ -22,7 +22,7 @@ type MerkleNode struct {
 	Data  []byte
 }
 
-func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
+func newMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
 	node := MerkleNode{}
 
 	if left == nil && right == nil {
@@ -64,7 +64,7 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 	for i, d := range data {
 		wg.Add(1)
 		go func(i int, d []byte) {
-			node := NewMerkleNode(nil, nil, d)
+			node := newMerkleNode(nil, nil, d)
 			nodes[i] = *node
 			merkle_tree_org[0][i] = *node
 			wg.Done()
@@ -83,7 +83,7 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 							if j+1 < n {
 								node2 = &nodes[j+1]
 							}
-							node := NewMerkleNode(node1, node2, nil)
+							node := newMerkleNode(node1, node2, nil)
 							merkle_tree_org[i][j/2] = *node
 							break
 						}
@@ -96,7 +96,7 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 							if j+1 < n {
 								node2 = &merkle_tree_org[i-1][j+1]
 							}
-							node := NewMerkleNode(node1, node2, nil)
+							node := newMerkleNode(node1, node2, nil)
 							merkle_tree_org[i][j/2] = *node
 							break
 						}
@@ -140,7 +140,7 @@ func NewMerkleTreeSync(data [][]byte) *MerkleTree {
 
 	var nodes []MerkleNode = make([]MerkleNode, len(data))
 	for i, d := range data {
-		node := NewMerkleNode(nil, nil, d)
+		node := newMerkleNode(nil, nil, d)
 		nodes[i] = *node
 		merkle_tree_org[0][i] = *node
 	}
@@ -153,7 +153,7 @@ func NewMerkleTreeSync(data [][]byte) *MerkleTree {
 				if j+1 < leaves_in_level {
 					node2 = &nodes[j+1]
 				}
-				node := NewMerkleNode(node1, node2, nil)
+				node := newMerkleNode(node1, node2, nil)
 				merkle_tree_org[i][j/2] = *node
 			} else {
 				node1 := &merkle_tree_org[i-1][j]
@@ -161,7 +161,7 @@ func NewMerkleTreeSync(data [][]byte) *MerkleTree {
 				if j+1 < leaves_in_level {
 					node2 = &merkle_tree_org[i-1][j+1]
 				}
-				node := NewMerkleNode(node1, node2, nil)
+				node := newMerkleNode(node1, node2, nil)
 				merkle_tree_org[i][j/2] = *node
 			}
 		}
@@ -265,4 +265,35 @@ func (tree MerkleTree) UpdateLeaf(index int, new_leaf string) (string, error) {
 	}
 	copy(tree.Root, hash)
 	return hex.EncodeToString(hash), nil
+}
+
+func (tree MerkleTree) VerifyProof(proof [][]byte, index int) bool {
+	hash := tree.Nodes[0][index].Data
+	position := float64(index)
+	for i := 0; i < tree.height-1; i++ {
+		var neighbour []byte
+		if int64(position)%2 == 0 {
+			neighbour = proof[i]
+			position = math.Floor(position / 2)
+			hash = solsha3.SoliditySHA3(
+				[]string{"uint256", "uint256"},
+				[]interface{}{
+					new(big.Int).SetBytes(hash),
+					new(big.Int).SetBytes(neighbour),
+				},
+			)
+		} else {
+			neighbour = proof[i]
+			position = math.Floor((position - 1) / 2)
+			hash = solsha3.SoliditySHA3(
+				[]string{"uint256", "uint256"},
+				[]interface{}{
+					new(big.Int).SetBytes(neighbour),
+					new(big.Int).SetBytes(hash),
+				},
+			)
+		}
+	}
+
+	return bytes.Equal(hash, tree.Root)
 }
