@@ -340,7 +340,7 @@ func main() {
 			fmt.Println("error in getting queue hash")
 			return
 		}
-		message += fmt.Sprintf("%064x", nft_queue_len+last_handled_nft_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(queue_hash))
+		message += fmt.Sprintf("%064x", nft_queue_len+last_handled_nft_queue_index) + fmt.Sprintf("%064s", hex.EncodeToString(nft_queue_hash))
 		nft_queue_index = nft_queue_len + last_handled_nft_queue_index
 	}
 	if has_process.HasNFTContractWithdrawal {
