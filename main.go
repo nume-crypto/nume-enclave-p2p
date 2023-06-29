@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+
+	// "strings"
 	"sync"
 	"time"
 
@@ -113,6 +115,13 @@ func main() {
 			}
 			leaf := GetLeafHash(fmt.Sprintf("%040s", u.(string)), "0x"+balances_root, nonce, input_data.UserListerNonce[u.(string)])
 			prev_val_hash[i] = leaf
+			// if strings.ToLower(u.(string)) == "" {
+			// 	fmt.Println("user", u.(string))
+			// 	fmt.Println("balancesRoot", balances_root)
+			// 	fmt.Println("old_user_nonce", nonce)
+			// 	fmt.Println("user_lister_nonce", input_data.UserListerNonce[u.(string)])
+			// 	fmt.Println("leaf", hex.EncodeToString(leaf))
+			// }
 			// fmt.Println(u,hex.EncodeToString(leaf), balances_root, nonce, input_data.UserListerNonce[u.(string)], "init")
 			wg.Done()
 			// ordered_bar.Add(1)
@@ -218,7 +227,13 @@ func main() {
 			leaf := GetLeafHash(u.(string), "0x"+balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)])
 			sm.Store(u.(string), hex.EncodeToString(leaf))
 			tree.UpdateLeaf(i, hex.EncodeToString(leaf))
-			// fmt.Println(u.(string), hex.EncodeToString(leaf), balances_root, uint(user_nonce_tracker[u.(string)]), input_data.UserListerNonce[u.(string)] , "update")
+			// if strings.ToLower(u.(string)) == "" {
+			// 	fmt.Println("user", u.(string))
+			// 	fmt.Println("balancesRoot", balances_root)
+			// 	fmt.Println("old_user_nonce", uint(user_nonce_tracker[u.(string)]))
+			// 	fmt.Println("user_lister_nonce", input_data.UserListerNonce[u.(string)])
+			// 	fmt.Println("leaf", hex.EncodeToString(leaf))
+			// }
 			wg.Done()
 			// update_bar.Add(1)
 			// }(i, u)
