@@ -132,10 +132,7 @@ func GetBalancesRoot(balances map[string]string, user_balance_order []string, ma
 	for i := 0; i < max_num_balances; i++ {
 		wg.Add(1)
 		go func(i int) {
-			if i < len(balances) && i < len(user_balance_order) {
-				if user_balance_order[i] == "0x0000000000000000000000000000000000000000" {
-					balances_data[i] = zero_hash
-				}
+			if i < len(user_balance_order) && user_balance_order[i] != "0x0000000000000000000000000000000000000000" {
 				amt_or_token_id := balances[user_balance_order[i]]
 				currency_or_contract := user_balance_order[i]
 				ctype := "0"

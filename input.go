@@ -131,14 +131,14 @@ func GetData(path string) (InputData, string, error) {
 	if err != nil {
 		return input_data, "", err
 	}
-	plan, err = os.ReadFile(path + "/address_public_key_map.json")
-	if err != nil {
-		return input_data, "", err
-	}
-	err = json.Unmarshal(plan, &input_data.AddressPublicKeyData)
-	if err != nil {
-		return input_data, "", err
-	}
+	// plan, err = os.ReadFile(path + "/address_public_key_map.json")
+	// if err != nil {
+	// 	return input_data, "", err
+	// }
+	// err = json.Unmarshal(plan, &input_data.AddressPublicKeyData)
+	// if err != nil {
+	// 	return input_data, "", err
+	// }
 
 	plan, err = os.ReadFile(path + "/new_nft_collections.json")
 	if err != nil {
