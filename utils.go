@@ -70,7 +70,7 @@ func GetLeafHash(address string, root string, nonce uint, used_lister_nonce []ui
 
 	for _, nonce := range optimized_used_lister_nonce {
 		types = append(types, "uint256")
-		values = append(values, nonce)
+		values = append(values, big.NewInt(int64(nonce)))
 	}
 	used_lister_nonce_hash := solsha3.SoliditySHA3(types, values)
 	if len(used_lister_nonce) == 0 {
