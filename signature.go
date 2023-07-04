@@ -291,9 +291,9 @@ func GetNftFromAndTo(tx *types.Transaction) (string, string, string, string, err
 	return nft_token_id, nft_token_address, to, from, nil
 }
 
-func NftTradeMessage(user, nft_contract_address, nft_token_id, currency_address, amount, bn string) string {
+func NftTradeMessage(user, nft_contract_address, nft_token_id, currency_address, amount, bn string, trade_type uint) string {
 	hash := solsha3.SoliditySHA3(
-		[]string{"address", "address", "uint256", "address", "uint256", "uint256"},
+		[]string{"address", "address", "uint256", "address", "uint256", "uint256", "uint256"},
 		[]interface{}{
 			user,
 			nft_contract_address,
@@ -301,6 +301,7 @@ func NftTradeMessage(user, nft_contract_address, nft_token_id, currency_address,
 			currency_address,
 			amount,
 			bn,
+			new(big.Int).SetUint64(uint64(trade_type)),
 		},
 	)
 	return hex.EncodeToString(hash)

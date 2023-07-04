@@ -261,11 +261,11 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			}
 			used_lister_nonce[trade.From] = append(used_lister_nonce[trade.From], trade.ListerNonce)
 			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
-			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.ListerNonce)))
+			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.ListerNonce)), 0)
 			if !EthVerify(list_message, trade.ListSignature, trade.From) {
 				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid list signature")
 			}
-			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)))
+			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)), 1)
 			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
 				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid buy signature")
 			}

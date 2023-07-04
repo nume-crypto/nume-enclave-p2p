@@ -105,9 +105,9 @@ func TestSignMessage(t *testing.T) {
 }
 
 func TestNftTradeMessage(t *testing.T) {
-	sig := NftTradeMessage("0xCcFf350Ef46B85228d6650a802107e58BF6A32Ab", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "1")
-	if sig != "fb053228ebfe580d705665ce141bab48720b7a5dc320ddd125ff54cb2caadb1c" {
-		t.Errorf("Expected fb053228ebfe580d705665ce141bab48720b7a5dc320ddd125ff54cb2caadb1c, got %s", sig)
+	sig := NftTradeMessage("0xCcFf350Ef46B85228d6650a802107e58BF6A32Ab", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "0x5FbDB2315678afecb367f032d93F642f64180aa3", "1", "1", 0)
+	if sig != "3671701b7ba928a6e73fe244755207b48ff4eb3968ad5c9c526335aa17740a6b" {
+		t.Errorf("Expected 3671701b7ba928a6e73fe244755207b48ff4eb3968ad5c9c526335aa17740a6b, got %s", sig)
 		return
 	}
 }

@@ -77,9 +77,10 @@ func main() {
 	var prev_val_hash = make([][]byte, max_num_users)
 	var empty_balances_data = make([][]byte, max_num_balances)
 	zero_hash := solsha3.SoliditySHA3(
-		[]string{"address", "uint256", "uint256"},
+		[]string{"address", "uint256", "uint256", "uint256"},
 		[]interface{}{
 			"0x0000000000000000000000000000000000000000",
+			"0",
 			"0",
 			"0",
 		},
