@@ -94,7 +94,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			user_nonce_tracker[transaction.To] = uint64(transaction.Nonce)
 		} else if trade.Type == "nft_trade" {
 			user_nonce_tracker[trade.To] = uint64(trade.BuyerNonce)
-		} else {
+		} else if transaction.Type != "nft_deposit" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" && transaction.Type != "" {
 			user_nonce_tracker[transaction.From] = uint64(transaction.Nonce)
 		}
 
