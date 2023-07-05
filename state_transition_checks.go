@@ -144,17 +144,25 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			tx_receiver := transaction.To
 			tx_nft_contract := transaction.CurrencyOrNftContractAddress
 			tx_nft_token_id := transaction.AmountOrNftTokenId
+			l2_minted := transaction.L2Minted
 			if trade.Type == "nft_trade" {
 				tx_receiver = trade.To
 				tx_nft_contract = trade.NftContractAddress
 				tx_nft_token_id = trade.NftTokenId
+				l2_minted = trade.L2Minted
 			}
 			users_updated_map[tx_receiver] = true
 			if _, ok := state_balances[tx_receiver]; ok {
 				state_balances[tx_receiver][tx_nft_contract+"-"+tx_nft_token_id] = "yes"
+				if l2_minted {
+					state_balances[tx_receiver][tx_nft_contract+"-"+tx_nft_token_id] = "l2_minted"
+				}
 			} else {
 				state_balances[tx_receiver] = make(map[string]string)
 				state_balances[tx_receiver][tx_nft_contract+"-"+tx_nft_token_id] = "yes"
+				if l2_minted {
+					state_balances[tx_receiver][tx_nft_contract+"-"+tx_nft_token_id] = "l2_minted"
+				}
 			}
 		}
 		if transaction.Type == "nft_contract_withdrawal" || transaction.Type == "nft_withdrawal" || transaction.Type == "nft_transfer" || trade.Type == "nft_trade" {
