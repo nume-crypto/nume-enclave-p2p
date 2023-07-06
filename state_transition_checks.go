@@ -11,6 +11,10 @@ func CheckNonce(last_nonce, current_nonce uint64) bool {
 	return last_nonce < current_nonce
 }
 
+func CheckCWValidity(cw_should_be_invalid map[string]map[string]bool, transaction Transaction, fee_currency_token string) bool {
+	return true
+}
+
 func TransitionState(state_balances map[string]map[string]string, transactions []interface{}, currencies []string, nft_collections []map[string]interface{}, used_lister_nonce map[string][]uint, meta_data map[string]interface{}, user_nonce_tracker map[string]uint64) (map[string]map[string]string, HasProcess, map[string]bool, error) {
 	users_updated_map := make(map[string]bool)
 	nft_collections_map := make(map[string]map[string]interface{})
@@ -18,6 +22,7 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 	for _, nft_collection := range nft_collections {
 		nft_collections_map[nft_collection["ContractAddress"].(string)] = nft_collection
 	}
+	cw_should_be_invalid := make(map[string]map[string]bool)
 	nume_address := meta_data["nume_user"].(string)
 	users_updated_map[nume_address] = true
 	fee_currency_token := meta_data["fee_currency_token"].(string)
@@ -75,6 +80,43 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			}
 			continue
 		}
+		if transaction.Type == "contract_withdrawal" || transaction.Type == "nft_contract_withdrawal" {
+			key := transaction.CurrencyOrNftContractAddress
+			if transaction.Type == "nft_contract_withdrawal" {
+				key = transaction.CurrencyOrNftContractAddress + "-" + transaction.AmountOrNftTokenId
+			}
+			if cw_should_be_invalid[transaction.From][key] {
+				PrettyPrint("cw_should_be_invalid", cw_should_be_invalid)
+				fmt.Println(transaction.From, key)
+				return state_balances, has_process, users_updated_map, fmt.Errorf("contract withdrawal is invalid for transaction number %v", i+1)
+			}
+		}
+		if _, ok := cw_should_be_invalid[transaction.From]; !ok {
+			cw_should_be_invalid[transaction.From] = make(map[string]bool)
+		}
+		if _, ok := cw_should_be_invalid[transaction.To]; !ok {
+			cw_should_be_invalid[transaction.To] = make(map[string]bool)
+		}
+		if transaction.Type == "transfer" {
+			cw_should_be_invalid[transaction.From][transaction.CurrencyOrNftContractAddress] = true
+			cw_should_be_invalid[transaction.From][fee_currency_token] = true
+		} else if transaction.Type == "withdrawal" {
+			cw_should_be_invalid[transaction.From][transaction.CurrencyOrNftContractAddress] = true
+		} else if transaction.Type == "nft_mint" {
+			cw_should_be_invalid[transaction.To][transaction.MintFeesToken] = true
+			cw_should_be_invalid[transaction.To][fee_currency_token] = true
+		} else if transaction.Type == "nft_transfer" {
+			cw_should_be_invalid[transaction.From][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = true
+			cw_should_be_invalid[transaction.From][fee_currency_token] = true
+		} else if transaction.Type == "nft_withdrawal" {
+			cw_should_be_invalid[transaction.From][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = true
+		}
+		if trade.Type == "nft_trade" {
+			cw_should_be_invalid[transaction.From][transaction.CurrencyOrNftContractAddress+"-"+transaction.AmountOrNftTokenId] = true
+			cw_should_be_invalid[transaction.To][fee_currency_token] = true
+			cw_should_be_invalid[transaction.To][transaction.CurrencyOrNftContractAddress] = true
+		}
+
 		if transaction.Type != "" && transaction.Type != "nft_deposit" && transaction.Type != "nft_mint" && transaction.Type != "deposit" && transaction.Type != "contract_withdrawal" && transaction.Type != "nft_contract_withdrawal" {
 			verified, err := VerifyData(transaction, currencies)
 			if !verified || err != nil {
@@ -270,12 +312,10 @@ func TransitionState(state_balances map[string]map[string]string, transactions [
 			used_lister_nonce[trade.From] = append(used_lister_nonce[trade.From], trade.ListerNonce)
 			// VERIFY LIST SIGNATURE AND BUY SIGNATURE
 			list_message := NftTradeMessage(trade.From, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.ListAmount, strconv.Itoa(int(trade.ListerNonce)), 0)
-			fmt.Println(list_message, "list")
 			if !EthVerify(list_message, trade.ListSignature, trade.From) {
 				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid list signature")
 			}
 			buy_message := NftTradeMessage(trade.To, trade.NftContractAddress, trade.NftTokenId, trade.Currency, trade.BuyAmount, strconv.Itoa(int(trade.BuyerNonce)), 1)
-			fmt.Println(buy_message, "buy")
 			if !EthVerify(buy_message, trade.BuySignature, trade.To) {
 				return state_balances, has_process, users_updated_map, fmt.Errorf("invalid buy signature")
 			}
